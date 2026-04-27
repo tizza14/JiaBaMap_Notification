@@ -14,16 +14,11 @@
 <style scoped>
 .cat {
   position: relative;
-  width: 100%;
-  max-width: 100%;
+  width: 150px;
+  height: 150px;
   overflow: hidden;
   background-color: white;
-}
-
-.cat::before {
-  content: "";
-  display: block;
-  padding-bottom: 100%;
+  transform: translateZ(0); /* 強制建立新 stacking context，確保 overflow:hidden 裁切 transform 子元素 */
 }
 
 .cat:active > * {

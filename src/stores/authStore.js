@@ -4,49 +4,44 @@ import { useRouter } from "vue-router";
 import axios from "axios";
 import * as jose from "jose";
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+
 export const useAuth = defineStore("auth", () => {
   const userData = ref(JSON.parse(localStorage.getItem("userData")) || null);
   const router = useRouter();
   const Swal = inject("$swal");
   const userId = ref("");
 
-  // 監聽資料變化並更新 localStorage
   watch(
     userData,
     (newValue) => {
       if (newValue) {
         localStorage.setItem("userData", JSON.stringify(newValue));
       } else {
-        localStorage.removeItem("userData"); // 清除資料
+        localStorage.removeItem("userData");
       }
     },
     { deep: true },
   );
 
-  // 新增更新大頭貼的方法
   const setPicture = (newPicture) => {
     if (userData.value) {
-      userData.value.profilePicture = newPicture; // 更新圖片資料
-      localStorage.setItem("userData", JSON.stringify(userData.value)); // 更新 localStorage
+      userData.value.profilePicture = newPicture;
+      localStorage.setItem("userData", JSON.stringify(userData.value));
     }
   };
 
   const initializeGoogleButton = () => {
     const buttonContainer = document.querySelector("#googleButton");
-
-    if (buttonContainer) {
-      buttonContainer.innerHTML = ""; // 防止重複渲染
-    }
+    if (buttonContainer) buttonContainer.innerHTML = "";
 
     if (window.google && window.google.accounts) {
-      // 初始化 Google 登錄
       window.google.accounts.id.initialize({
         client_id: import.meta.env.VITE_GOOGLE_LOGIN_KEY,
         callback: handleCredentialResponse,
       });
     }
 
-    // 渲染 Google 按鈕到綁定的容器
     window.google.accounts.id.renderButton(buttonContainer, {
       type: "standard",
       shape: "pill",
@@ -54,48 +49,54 @@ export const useAuth = defineStore("auth", () => {
       size: "large",
     });
   };
-  // 將Google的回覆送到後端驗證，後端回傳包裝好的jwt，將回傳的token存入local storage
+
+  // ── 內部：token 存入 + 取得使用者資料 ───────────────────────────
+  const _handleToken = async (token) => {
+    localStorage.setItem("userToken", token);
+    userId.value = jose.decodeJwt(token).id;
+    await getUserdata();
+  };
+
   const handleCredentialResponse = async (response) => {
-    const resToken = await axios.post(
-      `${import.meta.env.VITE_BACKEND_BASE_URL}/auth/user/login/google`,
-      response,
-    );
-    localStorage.setItem("userToken", resToken.data.token);
-    if (resToken) {
-      Swal.fire({
-        title: "登入成功",
-        icon: "success",
-        timer: 2000,
-        timerProgressBar: true,
-      });
-      //token解碼後可取得使用者id
-      userId.value = jose.decodeJwt(resToken.data.token).id;
-      getUserdata();
-    }
-    // router.push({ name: "user" });
+    const resToken = await axios.post(`${BACKEND_URL}/auth/user/login/google`, response);
+    await _handleToken(resToken.data.token);
+    Swal.fire({ title: "登入成功", icon: "success", timer: 2000, timerProgressBar: true });
   };
 
   const getUserdata = async () => {
-    const response = await axios.get(
-      `${import.meta.env.VITE_BACKEND_BASE_URL}/user/${userId.value}`,
-    );
+    const response = await axios.get(`${BACKEND_URL}/user/${userId.value}`);
     userData.value = response.data;
+  };
+
+  // ── 一般用戶：Email 登入 ─────────────────────────────────────────
+  const emailLogin = async (email, password) => {
+    const res = await axios.post(`${BACKEND_URL}/auth/user/login`, { email, password });
+    await _handleToken(res.data.token);
+    Swal.fire({ title: "登入成功", icon: "success", timer: 2000, timerProgressBar: true });
+  };
+
+  // ── 一般用戶：Email 註冊 ─────────────────────────────────────────
+  const emailRegister = async (name, email, password) => {
+    const res = await axios.post(`${BACKEND_URL}/auth/user/register`, { name, email, password });
+    await _handleToken(res.data.token);
+    Swal.fire({ title: "註冊成功", icon: "success", timer: 2000, timerProgressBar: true });
   };
 
   const logout = () => {
     userData.value = null;
-    localStorage.removeItem("userData"); // 清除 localStorage
+    localStorage.removeItem("userData");
+    localStorage.removeItem("userToken");
     router.push({ name: "home" });
-    console.log("用戶已登出");
   };
 
   return {
-    useAuth,
-    initializeGoogleButton,
     userData,
-    setPicture, // 新增 setPicture 方法
-    logout,
-    getUserdata,
     userId,
+    setPicture,
+    initializeGoogleButton,
+    emailLogin,
+    emailRegister,
+    getUserdata,
+    logout,
   };
 });

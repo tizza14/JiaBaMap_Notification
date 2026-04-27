@@ -110,11 +110,6 @@ const routes = [
     component: StoreSignIn,
   },
   {
-    path: "/menu-management",
-    name: "MenuManagement",
-    component: () => import("@/views/MenuManagement.vue"),
-  },
-  {
     path: "/Cart",
     name: "Cart",
     component: Cart,

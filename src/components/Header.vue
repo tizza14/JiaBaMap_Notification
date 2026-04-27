@@ -199,14 +199,14 @@ watch(route, () => {
           >
           <hr class="border-amber-200" />
           <li>
-            <a href="#" class="block p-2 text-amber-500 hover:bg-amber-100"
-              >店家註冊</a
-            >
+            <router-link to="/storesignup" class="block p-2 text-amber-500 hover:bg-amber-100">
+              店家註冊
+            </router-link>
           </li>
           <li>
-            <a href="#" class="block p-2 text-amber-500 hover:bg-amber-100"
-              >店家登入</a
-            >
+            <router-link to="/storesignin" class="block p-2 text-amber-500 hover:bg-amber-100">
+              店家登入
+            </router-link>
           </li>
 
           <hr class="border-amber-200" />
@@ -231,15 +231,8 @@ watch(route, () => {
       v-if="!isHome"
       class="items-center justify-start hidden w-full pl-4 mt-2 space-x-4 md:flex xl:w-auto xl:mt-0 xl:justify-end xl:pl-0"
     >
-      <!-- 登入/登出按鈕 -->
+      <!-- 左側連結群組 -->
       <div class="flex items-center space-x-4">
-        <button
-          v-if="!user.userData"
-          class="p-2 rounded-md text-amber-500 hover:bg-amber-100 min-w-20"
-          @click="openLoginModal"
-        >
-          會員登入
-        </button>
         <router-link
           to="/myarticle"
           class="p-2 rounded-md text-amber-500 hover:bg-amber-100 min-w-20"
@@ -254,7 +247,7 @@ watch(route, () => {
         </router-link>
       </div>
 
-      <!-- 下拉選單群組 -->
+      <!-- 右側下拉選單群組 -->
       <div class="flex items-center space-x-4">
         <!-- 店家專區的下拉選單 -->
         <div class="relative inline-block text-left group">
@@ -284,7 +277,7 @@ watch(route, () => {
             </ul>
           </div>
         </div>
-        <Notification />
+        <Notification v-if="user.userData" />
 
         <!-- 會員頭貼 -->
         <div v-if="user.userData" class="relative inline-block text-left group">
@@ -333,12 +326,6 @@ watch(route, () => {
             </ul>
           </div>
         </div>
-      </div>
-    </div>
-    <!-- 首頁版本的選單 -->
-    <div v-else class="items-center justify-end hidden space-x-4 md:flex">
-      <!-- 登入/登出按鈕 -->
-      <div class="flex items-center space-x-4">
         <button
           v-if="!user.userData"
           class="p-2 rounded-md text-amber-500 hover:bg-amber-100 min-w-20"
@@ -346,7 +333,12 @@ watch(route, () => {
         >
           會員登入
         </button>
-
+      </div>
+    </div>
+    <!-- 首頁版本的選單 -->
+    <div v-else class="items-center justify-end hidden space-x-4 md:flex">
+      <!-- 左側連結群組 -->
+      <div class="flex items-center space-x-4">
         <router-link
           to="/myarticle"
           class="p-2 rounded-md text-amber-500 hover:bg-amber-100 min-w-20"
@@ -361,7 +353,7 @@ watch(route, () => {
         </router-link>
       </div>
 
-      <!-- 下拉選單群組 -->
+      <!-- 右側下拉選單群組 -->
       <div class="flex items-center space-x-4">
         <!-- 店家專區的下拉選單 -->
         <div class="relative inline-block text-left group">
@@ -391,6 +383,7 @@ watch(route, () => {
             </ul>
           </div>
         </div>
+        <Notification v-if="user.userData" />
 
         <!-- 會員頭貼 -->
         <div v-if="user.userData" class="relative inline-block text-left group">
@@ -439,6 +432,13 @@ watch(route, () => {
             </ul>
           </div>
         </div>
+        <button
+          v-if="!user.userData"
+          class="p-2 rounded-md text-amber-500 hover:bg-amber-100 min-w-20"
+          @click="openLoginModal"
+        >
+          會員登入
+        </button>
       </div>
     </div>
   </header>

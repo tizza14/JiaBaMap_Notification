@@ -25,23 +25,14 @@ const handleLogin = async () => {
     );
 
     localStorage.setItem("storeToken", resToken.data.token);
-    if (resToken) {
-      Swal.fire({
-        title: "登入成功",
-        icon: "success",
-        timer: 2000,
-        timerProgressBar: true,
-      });
-      //token解碼後可取得店家id
-      storeId.value = jose.decodeJwt(resToken.data.token).id;
-      placeId.value = jose.decodeJwt(resToken.data.token).placeId;
-    }
+    storeId.value = jose.decodeJwt(resToken.data.token).id;
+    placeId.value = jose.decodeJwt(resToken.data.token).placeId;
 
-    Swal.fire({
-      title: "Success",
-      text: "登入成功",
+    await Swal.fire({
+      title: "登入成功",
       icon: "success",
-      confirmButtonText: "OK",
+      timer: 2000,
+      timerProgressBar: true,
     });
     router.push({ name: "dashboard" });
   } else {
