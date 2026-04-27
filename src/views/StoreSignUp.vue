@@ -168,7 +168,7 @@ onMounted(initGoogleAutocomplete);
           <input
             v-model="password"
             id="password"
-            type="text"
+            type="password"
             placeholder="請輸入密碼"
             class="w-full px-3 py-2 leading-tight text-gray-700 border rounded appearance-none hover:shadow-md focus:outline-orange-300"
           />

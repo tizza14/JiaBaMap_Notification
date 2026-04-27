@@ -3,6 +3,7 @@ import { inject, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
 import * as jose from "jose";
+import { useNotificationStore } from "./notificationStore";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
@@ -83,6 +84,7 @@ export const useAuth = defineStore("auth", () => {
   };
 
   const logout = () => {
+    useNotificationStore().disconnectSocket();
     userData.value = null;
     localStorage.removeItem("userData");
     localStorage.removeItem("userToken");
