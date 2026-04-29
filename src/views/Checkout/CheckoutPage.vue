@@ -5,8 +5,10 @@ import Swal from "sweetalert2";
 import DatePicker from "@/components/DatePicker.vue";
 import { useRoute, useRouter } from "vue-router";
 
-const VITE_BACKEND_NGROK_URL = import.meta.env.VITE_BACKEND_NGROK_URL;
 const VITE_BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+const paymentBackendUrl = (
+  import.meta.env.VITE_BACKEND_NGROK_URL || VITE_BACKEND_BASE_URL
+)?.replace(/\/+$/, "");
 
 const route = useRoute();
 const router = useRouter();
@@ -73,7 +75,7 @@ onMounted(() => {
 
 const handelPayment = async (shoppingCart) => {
   try {
-    const url = `${VITE_BACKEND_NGROK_URL}/payments/linepay/reserve`;
+    const url = `${paymentBackendUrl}/payments/linepay/reserve`;
     const { data } = await axios.post(url, shoppingCart);
     const paymentUrl = data?.response?.info?.paymentUrl?.web;
     const returnCode = data?.response?.returnCode;

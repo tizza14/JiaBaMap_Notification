@@ -543,6 +543,8 @@ const contentHtml = `${articles.value.content}`;
               :src="article.photo"
               :alt="article.title"
               class="object-cover w-full h-64 rounded-lg"
+              loading="lazy"
+              decoding="async"
             />
             <!-- 三點選單 -->
             <div
@@ -624,6 +626,8 @@ const contentHtml = `${articles.value.content}`;
             :src="article.photo"
             :alt="article.title"
             class="object-cover w-full h-48"
+            loading="lazy"
+            decoding="async"
           />
           <div
             class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent"
@@ -720,6 +724,8 @@ const contentHtml = `${articles.value.content}`;
                 <img
                   :src="comment.userPhoto"
                   class="object-cover w-full h-full rounded-full"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
               <div class="flex flex-col">
@@ -796,6 +802,8 @@ const contentHtml = `${articles.value.content}`;
                     <img
                       :src="reply.userPhoto"
                       class="object-cover w-full h-full rounded-full"
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                   <div class="flex flex-col">

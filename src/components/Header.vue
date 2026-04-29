@@ -92,6 +92,7 @@ watch(route, () => {
 </script>
 
 <template>
+  <div>
   <Login :visible="showLoginModal" @close="closeLoginModal" />
   <header
     class="fixed top-0 left-0 right-0 z-50 flex items-center p-2 bg-white border-b border-orange-200"
@@ -445,6 +446,7 @@ watch(route, () => {
 
   <!-- 添加一個佔位 div 來處理 margin -->
   <div :class="{ 'mt-8': isSearchOpen && windowWidth < 768 }"></div>
+  </div>
 </template>
 
 <style scoped>

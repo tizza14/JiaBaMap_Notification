@@ -125,12 +125,16 @@ document.addEventListener("click", handleDocumentClick);
         :src="bannerPhoto"
         alt="Banner"
         class="object-cover w-full h-full"
+        loading="lazy"
+        decoding="async"
       />
       <img
         v-else
         src="@/assets/logo.jpg"
         alt="Banner"
         class="object-cover w-full h-full"
+        loading="lazy"
+        decoding="async"
       />
       <div
         class="absolute top-0 left-0 w-full h-full bg-gray-800 opacity-25"
@@ -178,6 +182,8 @@ document.addEventListener("click", handleDocumentClick);
           :src="storePhoto"
           alt="Store Thumbnail"
           class="object-cover w-40 h-32 rounded-lg"
+          loading="lazy"
+          decoding="async"
         />
         <div class="space-y-2 text-center md:text-left">
           <div class="relative flex">
@@ -236,6 +242,8 @@ document.addEventListener("click", handleDocumentClick);
               :src="staticMapUrl"
               alt="formattedAddress"
               class="object-cover w-40 h-40 rounded-lg"
+              loading="lazy"
+              decoding="async"
             />
           </a>
           <a

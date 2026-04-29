@@ -8,6 +8,15 @@ import { useRouter } from "vue-router";
 
 const router = useRouter();
 
+const navigation = [
+  { name: "首頁", link: "/dashboard" },
+  { name: "餐廳資訊", link: "/storesignup" },
+  { name: "菜單管理", link: "/menu-management" },
+  { name: "訂單管理", link: "/" },
+];
+
+const logout = () => localStorage.removeItem("storeToken");
+
 const username = ref("");
 const password = ref("");
 const storeName = ref("");

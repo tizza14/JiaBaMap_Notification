@@ -52,6 +52,8 @@ const { recommendedRestaurants } = storeToRefs(restaurantStore);
                     :src="restaurant.photoUrl"
                     :alt="restaurant.name"
                     class="object-cover w-[250px] h-[160px] rounded-t-lg"
+                    loading="lazy"
+                    decoding="async"
                   />
                 </div>
                 <div class="p-4">

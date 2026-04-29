@@ -66,29 +66,17 @@ export const useStore = defineStore("store", () => {
 
   const fetchStorePhoto = async () => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${
-          photoIds.value[0]
-        }`,
-      );
-      storePhoto.value = URL.createObjectURL(await res.blob());
+      storePhoto.value = `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${photoIds.value[0]}?maxWidth=400&maxHeight=320`;
     } catch (err) {
-      console.log("Failed to fetch place photos from Google API.");
-      console.log(err);
+      console.log("Failed to set store photo URL.");
     }
   };
 
   const fetchBannerPhoto = async () => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${
-          photoIds.value[1]
-        }`,
-      );
-      bannerPhoto.value = URL.createObjectURL(await res.blob());
+      bannerPhoto.value = `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${photoIds.value[1]}?maxWidth=1280&maxHeight=720`;
     } catch (err) {
-      console.log("Failed to fetch place photos from Google API.");
-      console.log(err);
+      console.log("Failed to set banner photo URL.");
     }
   };
 
@@ -147,7 +135,7 @@ export const useStore = defineStore("store", () => {
           photoUrl: restaurant.photoId
             ? `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${
                 restaurant.photoId
-              }`
+              }?maxWidth=400&maxHeight=320`
             : null,
           place_id: restaurant.id,
           googleMapsUri: detailData.googleMapsUri,
@@ -226,7 +214,7 @@ export const useStore = defineStore("store", () => {
           rating: restaurant.rating || "N/A",
           userRatingCount: restaurant.userRatingCount || 0,
           photoUrl: restaurant.photoId
-            ? `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${restaurant.photoId}`
+            ? `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${restaurant.photoId}?maxWidth=400&maxHeight=320`
             : null,
           place_id: restaurant.id,
           googleMapsUri: detailData.googleMapsUri,

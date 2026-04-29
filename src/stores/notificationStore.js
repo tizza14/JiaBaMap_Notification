@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { io } from 'socket.io-client'
 import axios from 'axios'
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_BASE_URL
+const BACKEND_URL = import.meta.env.VITE_BACKEND_BASE_URL?.replace(/\/+$/, '')
 const MAX_NOTIFICATIONS = 50
 
 export const useNotificationStore = defineStore('notification', () => {
@@ -32,18 +32,18 @@ export const useNotificationStore = defineStore('notification', () => {
   }
 
   async function markAsRead(notificationId) {
-    const n = notifications.value.find(n => n._id === notificationId)
-    if (!n || n.read) return
-    // optimistic update
-    n.read = true
+    const notification = notifications.value.find(n => n._id === notificationId)
+    if (!notification || notification.read) return
+
+    notification.read = true
     unreadCount.value = Math.max(0, unreadCount.value - 1)
+
     try {
       await axios.patch(`${BACKEND_URL}/notification/read/${notificationId}`, {}, {
         headers: authHeader()
       })
     } catch (e) {
-      // rollback
-      n.read = false
+      notification.read = false
       unreadCount.value++
       console.error('markAsRead error:', e)
     }
@@ -51,17 +51,17 @@ export const useNotificationStore = defineStore('notification', () => {
 
   async function markAllAsRead(userId) {
     if (!userId) return
+
     const prevStates = notifications.value.map(n => n.read)
     const prevCount = unreadCount.value
-    // optimistic update
     notifications.value.forEach(n => { n.read = true })
     unreadCount.value = 0
+
     try {
       await axios.patch(`${BACKEND_URL}/notification/${userId}/read-all`, {}, {
         headers: authHeader()
       })
     } catch (e) {
-      // rollback
       notifications.value.forEach((n, i) => { n.read = prevStates[i] })
       unreadCount.value = prevCount
       console.error('markAllAsRead error:', e)
@@ -70,7 +70,7 @@ export const useNotificationStore = defineStore('notification', () => {
 
   function initSocket(userId) {
     if (!userId) return
-    // 已連線則直接加入房間，不重複建立連線
+
     if (socket?.connected) {
       socket.emit('join', userId)
       return
@@ -111,9 +111,9 @@ export const useNotificationStore = defineStore('notification', () => {
     })
 
     socket.on('readNotification', ({ notificationId }) => {
-      const n = notifications.value.find(n => n._id === notificationId)
-      if (n && !n.read) {
-        n.read = true
+      const notification = notifications.value.find(n => n._id === notificationId)
+      if (notification && !notification.read) {
+        notification.read = true
         unreadCount.value = Math.max(0, unreadCount.value - 1)
       }
     })
@@ -145,11 +145,11 @@ export const useNotificationStore = defineStore('notification', () => {
 
   function getNotificationMessage(actionType) {
     const messages = {
-      comment: '評論了你的貼文',
-      like: '對你的貼文按讚',
-      reply: '回覆了你的評論'
+      comment: '有人留言了你的文章',
+      like: '有人按讚了你的文章',
+      reply: '有人回覆了你的留言'
     }
-    return messages[actionType] || '與你互動'
+    return messages[actionType] || '你有新的通知'
   }
 
   return {

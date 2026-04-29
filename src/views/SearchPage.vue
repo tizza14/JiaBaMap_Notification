@@ -36,11 +36,11 @@ onUnmounted(() => {
 
 <template>
     <div>
-        <Header class:="z-100" @search-toggle="handleSearchToggle" />
+        <Header @search-toggle="handleSearchToggle" />
         
-        <div 
-        class:="relative"
-        :class="['flex', { 
+        <div
+        class="relative"
+        :class="['flex', {
         'mt-24': isSearchOpen && windowWidth < 768,
         'mt-20': !isHome && windowWidth >= 768 && windowWidth < 1167,
         'mt-8': isHome || windowWidth >= 1167

@@ -9,12 +9,13 @@ const Store = useStore();
 const { userData } = user;
 const dataReady = ref(false);
 const restaurants = ref([]);
+const backendUrl = import.meta.env.VITE_BACKEND_BASE_URL?.replace(/\/+$/, "");
 
 const getDetails = async () => {
   const placeIds = userData.favorites;
   const response = await Promise.all(
     placeIds.map((placeId) =>
-      axios.get(`http://localhost:3000/restaurants/${placeId}`),
+      axios.get(`${backendUrl}/restaurants/${placeId}`),
     ),
   );
   restaurants.value = response.map((response) => response.data);
@@ -22,9 +23,7 @@ const getDetails = async () => {
 };
 
 const photos = (photoId) => {
-  return `${
-    import.meta.env.VITE_BACKEND_BASE_URL
-  }/restaurants/photos/${photoId}`;
+  return `${backendUrl}/restaurants/photos/${photoId}`;
 };
 
 const StoreId = (placeId) => {

@@ -120,6 +120,8 @@
             :src="photoGet(place.photoId)"
             alt="Place image"
             class="object-cover w-full h-full"
+            loading="lazy"
+            decoding="async"
           />
         </div>
         <div class="flex flex-col justify-between w-3/5 ml-3 sm:text-xl">
@@ -255,7 +257,7 @@ const setCostRange = (value) => {
 };
 
 const photoGet = (photoId) => {
-  return `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${photoId}`;
+  return `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${photoId}?maxWidth=400&maxHeight=320`;
 };
 
 const loading = ref({});
