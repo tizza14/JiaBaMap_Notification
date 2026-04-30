@@ -80,6 +80,10 @@ npm run build
 - Font Awesome
 - DayJS
 
+## 🚀 Deployment
+
+部署狀態、環境變數與 Render/Vercel/AWS 上線 checklist 請看 [DEPLOYMENT_PROGRESS.md](./DEPLOYMENT_PROGRESS.md)。
+
 ## 👥 開發團隊
 
 > 團隊成員：7 人
