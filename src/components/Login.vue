@@ -70,11 +70,11 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const tabs = [
-  { key: "google", label: "Google 登入" },
   { key: "email",  label: "會員登入" },
+  { key: "google", label: "Google 登入" },
 ];
 
-const activeTab = ref("google");
+const activeTab = ref("email");
 const isRegisterMode = ref(false);
 const errorMsg = ref("");
 
@@ -114,12 +114,21 @@ const handleEmailRegister = async () => {
   }
 };
 
+const initializeGoogleButtonIfVisible = () => {
+  if (props.visible && activeTab.value === "google") {
+    nextTick(() => authStore.initializeGoogleButton());
+  }
+};
+
 // Google 按鈕初始化
 watch(
   () => props.visible,
-  (val) => {
-    if (val) nextTick(() => authStore.initializeGoogleButton());
-  },
+  initializeGoogleButtonIfVisible,
+);
+
+watch(
+  activeTab,
+  initializeGoogleButtonIfVisible,
 );
 </script>
 

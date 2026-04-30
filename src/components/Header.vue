@@ -131,7 +131,7 @@ watch(route, () => {
 
       <!-- 手機版選單按鈕 -->
       <div class="flex items-center space-x-4 md:hidden">
-        <Notification />
+        <Notification v-if="user.userData || isStoreLoggedIn" />
 
         <button @click="toggleSearch" class="text-amber-500">
           <font-awesome-icon
@@ -326,7 +326,7 @@ watch(route, () => {
             </ul>
           </div>
         </div>
-        <Notification v-if="user.userData" />
+        <Notification v-if="user.userData || isStoreLoggedIn" />
 
         <!-- 會員頭貼 -->
         <div v-if="user.userData" class="relative inline-block text-left group">
@@ -451,7 +451,7 @@ watch(route, () => {
             </ul>
           </div>
         </div>
-        <Notification v-if="user.userData" />
+        <Notification v-if="user.userData || isStoreLoggedIn" />
 
         <!-- 會員頭貼 -->
         <div v-if="user.userData" class="relative inline-block text-left group">

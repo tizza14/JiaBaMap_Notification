@@ -13,6 +13,9 @@ const { notifications, unreadCount } = storeToRefs(notifStore)
 
 const isDropdownOpen = ref(false)
 const dropdownRef = ref(null)
+const currentRecipientId = ref(null)
+
+const getUserId = (user) => user?.id || user?._id || null
 
 const formatTime = (timestamp) => {
   const diffMin = Math.floor((Date.now() - new Date(timestamp)) / 60000)
@@ -22,21 +25,48 @@ const formatTime = (timestamp) => {
   return new Date(timestamp).toLocaleDateString('zh-TW')
 }
 
+const getNotificationTarget = (notification) => {
+  const relatedType = notification.relatedType || ''
+  const metadata = notification.metadata || {}
+
+  if (relatedType.includes('article')) {
+    const articleId = metadata.articleId || notification.relatedId
+    const query = { articleId, focus: Date.now().toString() }
+
+    if (relatedType.includes('comment')) {
+      query.commentId = metadata.commentId || notification.relatedId
+    }
+    if (metadata.commentId) {
+      query.commentId = metadata.commentId
+    }
+    if (metadata.replyId || relatedType.includes('reply_like')) {
+      query.replyId = metadata.replyId || notification.relatedId
+    }
+
+    return { name: 'articlelist', query }
+  }
+
+  if (relatedType.includes('restaurant')) {
+    const placeId = metadata.placeId || notification.placeId
+    return placeId ? { name: 'store', query: { id: placeId, focus: Date.now().toString() } } : null
+  }
+
+  if (relatedType === 'order') {
+    const orderId = notification.relatedId
+    return localStorage.getItem('storeToken')
+      ? { name: 'OrderManagement', query: { orderId } }
+      : { name: 'CheckoutDetail', query: { orderId } }
+  }
+
+  return null
+}
+
 const handleNotificationClick = async (notification) => {
   await notifStore.markAsRead(notification._id)
   isDropdownOpen.value = false
-  if (notification.relatedType?.includes('article')) {
-    router.push(`/articlelist/${notification.relatedId}`)
-  } else if (notification.relatedType?.includes('restaurant')) {
-    router.push(`/store/${notification.relatedId}`)
-  } else if (notification.relatedType === 'order') {
-    // 訂單通知導航至訂單管理或 Dashboard
-    const token = localStorage.getItem('storeToken')
-    if (token) {
-      router.push('/order-management')
-    } else {
-      router.push('/user') // 顧客導向個人中心
-    }
+  const target = getNotificationTarget(notification)
+  if (target) {
+    router.push(target)
   }
 }
 
@@ -47,21 +77,26 @@ const handleClickOutside = (e) => {
 }
 
 watch(() => auth.userData, (user) => {
-  if (user?.id) {
-    notifStore.initSocket(user.id, 'user')
-    notifStore.fetchNotifications(user.id)
+  const userId = getUserId(user)
+  if (userId) {
+    currentRecipientId.value = userId
+    notifStore.initSocket(userId, 'user')
+    notifStore.fetchNotifications(userId)
   } else {
     // 檢查是否為店家登入
     const storeToken = localStorage.getItem('storeToken')
     if (storeToken) {
       try {
         const decoded = jose.decodeJwt(storeToken)
+        currentRecipientId.value = decoded.id
         notifStore.initSocket(decoded.id, 'store')
-        notifStore.fetchNotifications(decoded.id)
+        notifStore.fetchNotifications(decoded.id, 'store')
       } catch (e) {
+        currentRecipientId.value = null
         notifStore.disconnectSocket()
       }
     } else {
+      currentRecipientId.value = null
       notifStore.disconnectSocket()
     }
   }
@@ -104,7 +139,7 @@ onUnmounted(() => {
         <span class="text-sm font-semibold text-gray-700">通知</span>
         <button
           v-if="unreadCount > 0"
-          @click="notifStore.markAllAsRead(auth.userData?.id)"
+          @click="notifStore.markAllAsRead(currentRecipientId)"
           class="text-xs text-amber-500 hover:text-amber-700 transition-colors"
         >
           全部標記已讀
@@ -128,7 +163,7 @@ onUnmounted(() => {
             <div class="flex-1 min-w-0">
               <p class="text-sm">
                 <span class="font-medium">{{ notification.userName || notification.metadata?.userName }}</span>
-                {{ notifStore.getNotificationMessage(notification.actionType) }}
+                {{ notifStore.getNotificationMessage(notification.actionType, notification.metadata, notification.relatedType) }}
               </p>
               <p class="text-xs text-gray-400 mt-1">
                 {{ formatTime(notification.timestamp || notification.createdAt) }}

@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted, inject, computed } from "vue";
+import { ref, onMounted, onUnmounted, inject, computed, nextTick, watch } from "vue";
+import { useRoute } from "vue-router";
 import axios from "axios";
 import dayjs from "dayjs";
 import Header from "../components/Header.vue";
@@ -7,6 +8,7 @@ import { useAuth } from "../stores/authStore";
 import { storeToRefs } from "pinia";
 
 const auth = useAuth();
+const route = useRoute();
 const { userData } = storeToRefs(auth);
 const $swal = inject("$swal");
 
@@ -21,6 +23,7 @@ const newReply = ref({ content: "", replyingTo: null });
 const activeMenuId = ref(null);
 const isSearchOpen = ref(false);
 const isMobile = ref(window.innerWidth < 768);
+const highlightedTargetId = ref("");
 
 const api = axios.create({ baseURL: import.meta.env.VITE_BACKEND_BASE_URL });
 
@@ -48,6 +51,70 @@ const coverPhoto = (article) => {
   return Array.isArray(article.photo) ? article.photo[0] : article.photo;
 };
 
+const normalizeArticle = (article) => ({
+  ...article,
+  comments: article.comments || [],
+  showComments: false,
+  showFullContent: false,
+});
+
+const scrollToTarget = async (targetId) => {
+  await nextTick();
+
+  window.setTimeout(() => {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    const headerOffset = isMobile.value ? 88 : 96;
+    const targetTop = target.getBoundingClientRect().top + window.scrollY - headerOffset;
+
+    window.scrollTo({
+      top: Math.max(0, targetTop),
+      behavior: "smooth",
+    });
+
+    highlightedTargetId.value = targetId;
+    window.setTimeout(() => {
+      if (highlightedTargetId.value === targetId) {
+        highlightedTargetId.value = "";
+      }
+    }, 1800);
+  }, 180);
+};
+
+const focusArticleFromRoute = async () => {
+  const articleId = route.query.articleId;
+  if (!articleId) return;
+
+  let article = articles.value.find((item) => item._id === articleId);
+  if (!article) {
+    try {
+      const { data } = await api.get(`/articles/${articleId}`);
+      article = normalizeArticle(data);
+      articles.value = [
+        article,
+        ...articles.value.filter((item) => item._id !== articleId),
+      ];
+    } catch {
+      return;
+    }
+  }
+
+  article.showFullContent = true;
+  if (route.query.commentId || route.query.replyId) {
+    article.showComments = true;
+  }
+
+  const targetId =
+    route.query.replyId
+      ? `reply-${route.query.replyId}`
+      : route.query.commentId
+        ? `comment-${route.query.commentId}`
+        : `article-${articleId}`;
+
+  await scrollToTarget(targetId);
+};
+
 const swal = $swal.mixin({
   customClass: {
     confirmButton: "bg-red-500 text-white px-6 py-2 rounded mx-2 hover:bg-red-600",
@@ -67,12 +134,7 @@ const fetchArticles = async (page = 1) => {
       params: { userId, page, limit: 10, sortBy: sortBy.value },
     });
 
-    const list = (data.articles || data).map((a) => ({
-      ...a,
-      comments: a.comments || [],
-      showComments: false,
-      showFullContent: false,
-    }));
+    const list = (data.articles || data).map(normalizeArticle);
 
     if (page === 1) {
       articles.value = list;
@@ -82,6 +144,7 @@ const fetchArticles = async (page = 1) => {
 
     totalPages.value = data.totalPages || 1;
     currentPage.value = page;
+    await focusArticleFromRoute();
   } catch {
     await swal.fire({ title: "錯誤！", text: "獲取文章失敗，請稍後再試", icon: "error", confirmButtonText: "確定" });
     articles.value = [];
@@ -89,6 +152,11 @@ const fetchArticles = async (page = 1) => {
     isLoading.value = false;
   }
 };
+
+watch(
+  () => route.query,
+  focusArticleFromRoute,
+);
 
 const loadMore = () => {
   if (currentPage.value < totalPages.value) {
@@ -342,8 +410,10 @@ onUnmounted(() => {
     <!-- 文章列表 -->
     <article
       v-for="article in articles"
+      :id="`article-${article._id}`"
       :key="article._id"
       class="mb-8 overflow-hidden bg-white rounded-xl shadow-md"
+      :class="{ 'ring-2 ring-amber-300 ring-offset-2': highlightedTargetId === `article-${article._id}` }"
     >
       <!-- 桌面版 (>=768px) -->
       <div class="hidden md:block p-6">
@@ -507,7 +577,13 @@ onUnmounted(() => {
           </div>
 
           <!-- 留言列表 -->
-          <div v-for="comment in article.comments" :key="comment._id" class="pl-3 border-l-2 border-amber-100">
+          <div
+            v-for="comment in article.comments"
+            :id="`comment-${comment._id}`"
+            :key="comment._id"
+            class="pl-3 border-l-2 border-amber-100 scroll-mt-24"
+            :class="{ 'bg-amber-50 border-amber-300 rounded-md py-2 pr-2 transition-colors': highlightedTargetId === `comment-${comment._id}` }"
+          >
             <div class="flex items-center gap-2 mb-1">
               <img :src="comment.userPhoto || '/image/default_user.png'" class="w-7 h-7 rounded-full object-cover" loading="lazy" />
               <div>
@@ -536,7 +612,13 @@ onUnmounted(() => {
 
             <!-- 回覆列表 -->
             <div v-if="comment.replies?.length" class="mt-3 ml-9 space-y-2">
-              <div v-for="reply in comment.replies" :key="reply._id" class="p-2.5 rounded-lg bg-gray-50">
+              <div
+                v-for="reply in comment.replies"
+                :id="`reply-${reply._id}`"
+                :key="reply._id"
+                class="p-2.5 rounded-lg bg-gray-50 scroll-mt-24"
+                :class="{ 'bg-amber-50 ring-2 ring-amber-300': highlightedTargetId === `reply-${reply._id}` }"
+              >
                 <div class="flex items-center gap-2 mb-1">
                   <img :src="reply.userPhoto || '/image/default_user.png'" class="w-6 h-6 rounded-full object-cover" loading="lazy" />
                   <span class="text-xs font-medium">{{ reply.user }}</span>

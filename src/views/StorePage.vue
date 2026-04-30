@@ -1,6 +1,7 @@
 <script setup>
 import axios from "axios";
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed, watch } from "vue";
+import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useStore } from "@/stores/storePage";
 import StoreComment from "@/components/storeComment/StoreComment.vue";
@@ -13,6 +14,7 @@ import SearchInput from "@/components/SearchInput.vue";
 import { useAuth } from "@/stores/authStore";
 
 const restaurantStore = useStore();
+const route = useRoute();
 const user = useAuth();
 const userData = computed(() => user.userData);
 const iconClassic = ref("far");
@@ -80,9 +82,11 @@ const checkFavorite = () => {
   }
 };
 
-// 頁面載入時的初始化
-onMounted(async () => {
+const loadStorePage = async () => {
   try {
+    if (route.query.id && route.query.id !== restaurantStore.placesId) {
+      restaurantStore.placesId = route.query.id;
+    }
     await restaurantStore.fetchPlaceDetail();
     await restaurantStore.fetchStorePhoto();
     await restaurantStore.fetchBannerPhoto();
@@ -92,7 +96,19 @@ onMounted(async () => {
   } catch (error) {
     console.error("數據載入錯誤：", error);
   }
-});
+};
+
+// 頁面載入時的初始化
+onMounted(loadStorePage);
+
+watch(
+  () => route.query.id,
+  () => {
+    if (route.name === "store") {
+      loadStorePage();
+    }
+  },
+);
 
 // 點擊頁面其他地方時隱藏下拉選單
 function handleDocumentClick(event) {

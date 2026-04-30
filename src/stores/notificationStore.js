@@ -10,17 +10,25 @@ export const useNotificationStore = defineStore('notification', () => {
   const notifications = ref([])
   const unreadCount = ref(0)
   const isConnected = ref(false)
+  const activeTokenType = ref('user')
   let socket = null
 
-  const authHeader = () => ({
-    Authorization: `Bearer ${localStorage.getItem('userToken')}`
-  })
+  const authHeader = (type = activeTokenType.value) => {
+    const token = type === 'store'
+      ? localStorage.getItem('storeToken')
+      : localStorage.getItem('userToken')
 
-  async function fetchNotifications(userId) {
+    return {
+      Authorization: `Bearer ${token}`
+    }
+  }
+
+  async function fetchNotifications(userId, type = activeTokenType.value) {
     if (!userId) return
+    activeTokenType.value = type
     try {
       const { data } = await axios.get(`${BACKEND_URL}/notification/${userId}`, {
-        headers: authHeader()
+        headers: authHeader(type)
       })
       notifications.value = data
         .sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt))
@@ -70,6 +78,7 @@ export const useNotificationStore = defineStore('notification', () => {
 
   function initSocket(userId, type = 'user') {
     if (!userId) return
+    activeTokenType.value = type
 
     if (socket?.connected) {
       socket.emit('join', userId)
@@ -139,7 +148,11 @@ export const useNotificationStore = defineStore('notification', () => {
 
   function sendBrowserNotification(notification) {
     if ('Notification' in window && window.Notification.permission === 'granted') {
-      const message = getNotificationMessage(notification.actionType, notification.metadata)
+      const message = getNotificationMessage(
+        notification.actionType,
+        notification.metadata,
+        notification.relatedType
+      )
       new window.Notification('呷飽地圖通知', {
         body: message,
         icon: notification.userImg || notification.metadata?.userImg || '/public/favicon.jpg'
@@ -147,15 +160,30 @@ export const useNotificationStore = defineStore('notification', () => {
     }
   }
 
-  function getNotificationMessage(actionType, metadata = {}) {
-    const messages = {
-      comment: '有人留言了你的文章',
-      like: '有人按讚了你的文章',
-      reply: '有人回覆了你的留言',
-      new_order: `收到來自 ${metadata.userName || '顧客'} 的新訂單！`,
-      order_status: `您的訂單狀態更新為：${metadata.statusText || '處理中'}`
+  function getNotificationMessage(actionType, metadata = {}, relatedType = '') {
+    const relatedMessages = {
+      article_like: '有人按讚了你的文章',
+      article_comment: '有人留言了你的文章',
+      article_comment_like: '有人按讚了你的留言',
+      article_comment_reply: '有人回覆了你的留言',
+      article_reply_like: '有人按讚了你的回覆',
+      restaurant_comment: '有人評論了你的餐廳',
+      restaurant_comment_like: '有人按讚了你的評論',
     }
-    return messages[actionType] || '你有新的通知'
+
+    if (relatedMessages[relatedType]) return relatedMessages[relatedType]
+
+    if (actionType === 'new_order') {
+      return `收到來自 ${metadata.userName || '顧客'} 的新訂單！`
+    }
+    if (actionType === 'order_status') {
+      return `您的訂單狀態更新為：${metadata.statusText || '處理中'}`
+    }
+    if (actionType === 'like') return '有人按讚了你的內容'
+    if (actionType === 'comment') return '有人留下了評論'
+    if (actionType === 'reply') return '有人回覆了你'
+
+    return '你有新的通知'
   }
 
   return {
