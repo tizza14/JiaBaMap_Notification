@@ -1,13 +1,20 @@
 <script setup>
-import { ref, onMounted, onBeforeMount, inject, nextTick } from "vue";
+import { ref, onMounted, onBeforeMount, onUnmounted, inject, nextTick } from "vue";
 import CreateNoteNavbar from "@/components/CreateNote/CreateNoteNavbar.vue";
 import { useRouter, useRoute } from "vue-router";
+import { useAuth } from "@/stores/authStore";
 import axios from "axios";
 import swal from "sweetalert2";
 
 const router = useRouter();
 const route = useRoute();
 const $swal = inject("$swal");
+const auth = useAuth();
+
+// 自動儲存狀態
+const autoSaveStatus = ref(""); // "" | "saving" | "saved" | "error"
+const currentDraftId = ref(null);
+let autoSaveTimer = null;
 
 // 定義響應式變數
 const date = ref("");
@@ -72,6 +79,10 @@ onBeforeMount(() => {
 });
 
 // 初始化表單資料
+onUnmounted(() => {
+  if (autoSaveTimer) clearInterval(autoSaveTimer);
+});
+
 onMounted(async () => {
   try {
     // 初始化預設值
@@ -163,6 +174,11 @@ onMounted(async () => {
     content.value = "";
     restaurantName.value = "";
     fileList.value = [];
+  }
+
+  // 啟動自動儲存（每 30 秒），編輯已發布文章時不啟動
+  if (route.query.type !== "published") {
+    autoSaveTimer = setInterval(autoSaveDraft, 30000);
   }
 });
 
@@ -479,11 +495,45 @@ const saveArticle = async () => {
 
 // 添加獲取當前內容的方法
 const getCurrentContent = () => {
-  // 直接從 contenteditable div 獲取內容
-  if (editor.value) {
-    return editor.value.innerHTML;
-  }
+  if (editor.value) return editor.value.innerHTML;
   return "";
+};
+
+// 自動儲存草稿到伺服器
+const autoSaveDraft = async () => {
+  // 編輯中的已發布文章不自動儲存為草稿
+  if (route.query.type === "published") return;
+  // 未登入只存 localStorage
+  if (!auth.userData?._id) {
+    saveNote();
+    return;
+  }
+
+  autoSaveStatus.value = "saving";
+  try {
+    const { data } = await axios.post(
+      `${import.meta.env.VITE_BACKEND_BASE_URL}/articles/draft`,
+      {
+        userId: auth.userData._id,
+        user: auth.userData.name,
+        userPhoto: auth.userData.profilePicture || "",
+        draftId: currentDraftId.value,
+        title: title.value,
+        content: content.value,
+        restaurantName: restaurantName.value,
+        placeId: placeId.value,
+        eatdate: date.value,
+      }
+    );
+    currentDraftId.value = data.draftId;
+    autoSaveStatus.value = "saved";
+    // 同步更新 localStorage
+    saveNote();
+    setTimeout(() => { autoSaveStatus.value = ""; }, 2000);
+  } catch {
+    autoSaveStatus.value = "error";
+    setTimeout(() => { autoSaveStatus.value = ""; }, 3000);
+  }
 };
 </script>
 
@@ -498,6 +548,22 @@ const getCurrentContent = () => {
       :currentRestaurantName="restaurantName"
       :getCurrentContent="getCurrentContent"
     />
+    <!-- 自動儲存狀態提示 -->
+    <transition name="fade">
+      <div
+        v-if="autoSaveStatus"
+        class="fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow text-sm z-50"
+        :class="{
+          'bg-gray-700 text-white': autoSaveStatus === 'saving',
+          'bg-green-500 text-white': autoSaveStatus === 'saved',
+          'bg-red-500 text-white': autoSaveStatus === 'error',
+        }"
+      >
+        <span v-if="autoSaveStatus === 'saving'">自動儲存中...</span>
+        <span v-else-if="autoSaveStatus === 'saved'">草稿已自動儲存</span>
+        <span v-else-if="autoSaveStatus === 'error'">自動儲存失敗</span>
+      </div>
+    </transition>
     <div
       class="max-w-4xl p-4 mx-auto mt-6 bg-white rounded-lg shadow-lg m-11 md:p-4"
     >
@@ -631,6 +697,9 @@ img {
   max-width: 100%;
   border-radius: 0.375rem;
 }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
 input[type="file"]::-webkit-file-upload-button {
   border: none;

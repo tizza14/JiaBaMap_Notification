@@ -1,21 +1,23 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import axios from "axios";
-import Swal from 'sweetalert2'
-import 'sweetalert2/dist/sweetalert2.min.css'
+import * as jose from "jose";
+import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
 
-const imageFile = ref(null); // 儲存上傳的檔案
-const storeId = "677eadb14dabab3aff8878c2";
+// 從 JWT 取得 storeId
+const token = localStorage.getItem("storeToken");
+const storeId = token ? jose.decodeJwt(token).id : null;
+
 const menus = ref([]);
 const showModal = ref(false);
 const isEditing = ref(false);
-const menuForm = ref({
-  name: "",
-  price: "",
-  category: "",
-});
+const isLoading = ref(false);
+const isSaving = ref(false);
+const imagePreview = ref(null);
+const menuForm = ref({ name: "", description: "", price: "", category: "", image: null });
 const editingId = ref(null);
-// 搜尋與分頁狀態管理
+
 const searchQuery = ref("");
 const selectedCategory = ref("");
 const minPrice = ref("");
@@ -23,182 +25,158 @@ const maxPrice = ref("");
 const currentPage = ref(1);
 const totalPages = ref(1);
 
-// 開啟新增彈窗
+const authHeaders = computed(() => ({
+  Authorization: `Bearer ${token}`,
+}));
+
 const openAddModal = () => {
-  isEditing.value = false; // 確保是新增模式
-  menuForm.value = { name: "", price: "", category: "" };
-  showModal.value = true; // 打開彈窗
+  isEditing.value = false;
+  menuForm.value = { name: "", description: "", price: "", category: "", image: null };
+  imagePreview.value = null;
+  showModal.value = true;
 };
 
-// 驗證函數
+const openEditModal = (menu) => {
+  isEditing.value = true;
+  editingId.value = menu._id;
+  menuForm.value = { ...menu, image: null };
+  imagePreview.value = menu.imageUrl || null;
+  showModal.value = true;
+};
+
+const closeModal = () => {
+  showModal.value = false;
+  isEditing.value = false;
+  menuForm.value = { name: "", description: "", price: "", category: "", image: null };
+  imagePreview.value = null;
+};
+
+const handleFileUpload = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  menuForm.value.image = file;
+  imagePreview.value = URL.createObjectURL(file);
+};
+
 const validateForm = () => {
   if (!menuForm.value.name.trim()) {
-    Swal.fire({
-      title: "名稱不能為空！",
-      icon: "warning",
-      confirmButtonText: "確定",
-    });
+    Swal.fire({ title: "名稱不能為空！", icon: "warning", confirmButtonText: "確定" });
     return false;
   }
-  if (!menuForm.value.category.trim()) {
-    Swal.fire({
-      title: "分類不能為空！",
-      icon: "warning",
-      confirmButtonText: "確定",
-    });
+  if (!menuForm.value.category) {
+    Swal.fire({ title: "請選擇分類！", icon: "warning", confirmButtonText: "確定" });
     return false;
   }
   if (!menuForm.value.price || menuForm.value.price <= 0) {
-    Swal.fire({
-      title: "價格必須大於 0！",
-      icon: "warning",
-      confirmButtonText: "確定",
-    });
+    Swal.fire({ title: "價格必須大於 0！", icon: "warning", confirmButtonText: "確定" });
     return false;
   }
   return true;
 };
 
-// 處理圖片選擇
-const handleFileUpload = (event) => {
-  const file = event.target.files[0];
-  menuForm.value.image = file; // 暫存圖片檔案
+const fetchMenus = async (page = 1) => {
+  if (!storeId) return;
+  isLoading.value = true;
+  try {
+    const response = await axios.get(`${import.meta.env.VITE_BACKEND_BASE_URL}/menu`, {
+      params: {
+        page,
+        limit: 10,
+        storeId,
+        name: searchQuery.value || undefined,
+        category: selectedCategory.value || undefined,
+        minPrice: minPrice.value || undefined,
+        maxPrice: maxPrice.value || undefined,
+      },
+    });
+    menus.value = Array.isArray(response.data.menus) ? response.data.menus : [];
+    totalPages.value = response.data.totalPages || 1;
+    currentPage.value = response.data.currentPage || 1;
+  } catch (error) {
+    Swal.fire({ title: "無法取得菜單資料！", icon: "error", confirmButtonText: "確定" });
+  } finally {
+    isLoading.value = false;
+  }
 };
 
-// 更新 fetchMenus 支援搜尋與分頁
-const fetchMenus = async (page = 1) => {
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_BACKEND_BASE_URL}/menu`,
-      {
-        params: {
-          page,
-          limit: 10, // 每頁 10 筆資料
-          name: searchQuery.value,
-          category: selectedCategory.value,
-          minPrice: minPrice.value || undefined,
-          maxPrice: maxPrice.value || undefined,
-          storeId: storeId, // 確保這裡傳的是正確的 ObjectId
-        },
-      },
-    );
+const resetFilters = () => {
+  searchQuery.value = "";
+  selectedCategory.value = "";
+  minPrice.value = "";
+  maxPrice.value = "";
+  fetchMenus(1);
+};
 
-    // 更新資料與分頁狀態
-    menus.value = Array.isArray(response.data.menus) ? response.data.menus : [];
-    totalPages.value = response.data.totalPages;
-    currentPage.value = response.data.currentPage;
-
-    console.log("查詢結果：", menus.value);
-  } catch (error) {
-    console.error("取得菜單資料失敗：", error);
-    Swal.fire({
-      title: "無法取得菜單資料，請檢查後端連線！",
-      icon: "error",
-      confirmButtonText: "確定",
-    });
+const buildFormData = () => {
+  const formData = new FormData();
+  formData.append("name", menuForm.value.name);
+  formData.append("description", menuForm.value.description || "");
+  formData.append("price", menuForm.value.price);
+  formData.append("category", menuForm.value.category);
+  if (menuForm.value.image) {
+    formData.append("image", menuForm.value.image);
   }
+  return formData;
 };
 
 const addMenu = async () => {
   if (!validateForm()) return;
-
+  isSaving.value = true;
   try {
-    const formData = new FormData();
-    formData.append("name", menuForm.value.name);
-    formData.append("description", menuForm.value.description); // 新增描述
-    formData.append("price", menuForm.value.price);
-    formData.append("category", menuForm.value.category);
+    const formData = buildFormData();
     formData.append("storeId", storeId);
-
-    // 檢查圖片並加入
-    if (menuForm.value.image) {
-      formData.append("image", menuForm.value.image); // 圖片檔案
-    }
-
     const response = await axios.post(
       `${import.meta.env.VITE_BACKEND_BASE_URL}/menu`,
       formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
+      { headers: { ...authHeaders.value, "Content-Type": "multipart/form-data" } }
     );
-
-    if (response.status === 200 && response.data._id) {
-      menus.value.push(response.data); // 更新畫面
-      closeModal(); 
-      Swal.fire({
-        title: "新增成功！",
-        icon: "success",
-        confirmButtonText: "好的",
-      });
+    if (response.status === 200) {
+      await fetchMenus(currentPage.value);
+      closeModal();
+      Swal.fire({ title: "新增成功！", icon: "success", confirmButtonText: "好的" });
     }
   } catch (error) {
-    console.error("新增菜單失敗：", error);
-    Swal.fire({
-      title: "新增失敗！",
-      icon: "error",
-      confirmButtonText: "確定",
-    });
+    Swal.fire({ title: "新增失敗！", icon: "error", confirmButtonText: "確定" });
+  } finally {
+    isSaving.value = false;
   }
 };
 
-// 開啟編輯彈窗
-const openEditModal = (menu) => {
-  isEditing.value = true;
-  editingId.value = menu._id;
-  menuForm.value = { ...menu };
-  showModal.value = true;
-};
-
 const updateMenu = async () => {
+  if (!validateForm()) return;
+  isSaving.value = true;
   try {
-    const formData = new FormData();
-    formData.append("name", menuForm.value.name);
-    formData.append("description", menuForm.value.description); // 新增描述
-    formData.append("price", menuForm.value.price);
-    formData.append("category", menuForm.value.category);
-
-    // 檢查是否有新的圖片需要更新
-    if (menuForm.value.image) {
-      formData.append("image", menuForm.value.image); // 圖片檔案
-    }
-
     const response = await axios.put(
       `${import.meta.env.VITE_BACKEND_BASE_URL}/menu/${editingId.value}`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
+      buildFormData(),
+      { headers: { ...authHeaders.value, "Content-Type": "multipart/form-data" } }
     );
-
     if (response.status === 200) {
-      const index = menus.value.findIndex(
-        (menu) => menu._id === editingId.value,
-      );
-      menus.value[index] = response.data; // 更新畫面
+      await fetchMenus(currentPage.value);
       closeModal();
-      Swal.fire({
-        title: "更新成功！",
-        icon: "success",
-        confirmButtonText: "好的",
-      });
+      Swal.fire({ title: "更新成功！", icon: "success", confirmButtonText: "好的" });
     }
   } catch (error) {
-    console.error("更新菜單失敗：", error);
-    Swal.fire({
-      title: "更新失敗！",
-      icon: "error",
-      confirmButtonText: "確定",
-    });
+    Swal.fire({ title: "更新失敗！", icon: "error", confirmButtonText: "確定" });
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+const toggleAvailability = async (menu) => {
+  try {
+    const response = await axios.patch(
+      `${import.meta.env.VITE_BACKEND_BASE_URL}/menu/${menu._id}/availability`,
+      {},
+      { headers: authHeaders.value }
+    );
+    menu.isAvailable = response.data.isAvailable;
+  } catch {
+    Swal.fire({ title: "切換狀態失敗！", icon: "error", confirmButtonText: "確定" });
   }
 };
 
 const deleteMenu = async (id) => {
-  // 以 SweetAlert2 顯示確認視窗
   const result = await Swal.fire({
     title: "確定要刪除嗎？",
     icon: "warning",
@@ -206,262 +184,256 @@ const deleteMenu = async (id) => {
     confirmButtonText: "刪除",
     cancelButtonText: "取消",
   });
+  if (!result.isConfirmed) return;
 
-  // 使用者按「刪除」才繼續
-  if (result.isConfirmed) {
-    try {
-      await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/menu/${id}`);
-      menus.value = menus.value.filter((menu) => menu._id !== id);
-
-      // 可以視需求是否再給個「刪除成功」提示
-      Swal.fire({
-        title: "刪除成功！",
-        icon: "success",
-        confirmButtonText: "好的",
-      });
-    } catch (error) {
-      console.error("刪除失敗：", error);
-      Swal.fire({
-        title: "刪除失敗！",
-        icon: "error",
-        confirmButtonText: "確定",
-      });
-    }
+  try {
+    await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/menu/${id}`, {
+      headers: authHeaders.value,
+    });
+    menus.value = menus.value.filter((m) => m._id !== id);
+    Swal.fire({ title: "刪除成功！", icon: "success", confirmButtonText: "好的" });
+  } catch {
+    Swal.fire({ title: "刪除失敗！", icon: "error", confirmButtonText: "確定" });
   }
 };
 
-const closeModal = () => {
-  showModal.value = false;
-  isEditing.value = false;
-  menuForm.value = { name: "", description: "", price: "", category: "" };
+const navigation = ref([
+  { name: "首頁", link: "/dashboard" },
+  { name: "餐廳資訊", link: "/store-profile" },
+  { name: "菜單管理", link: "/menu-management" },
+  { name: "訂單管理", link: "/order-management" },
+]);
+
+const currency = (value) => {
+  return new Intl.NumberFormat("zh-TW", {
+    style: "currency",
+    currency: "TWD",
+    minimumFractionDigits: 0
+  }).format(value);
+};
+
+const logout = () => {
+  localStorage.removeItem("storeToken");
+  window.location.href = "/storesignin";
 };
 
 onMounted(fetchMenus);
 </script>
 
 <template>
-  <div class="p-6 mt-10">
-    <!-- 標題 -->
-    <div class="flex justify-between">
-      <h1 class="mb-4 text-2xl font-bold">菜單管理</h1>
-      <button>
-        <router-link
-          to="/dashboard"
-          class="px-4 py-2 mb-4 text-white transition rounded bg-amber-400 hover:bg-amber-500"
-          >首頁</router-link
-        >
-      </button>
-    </div>
-
-    <!-- 新增按鈕 -->
-    <button
-      @click="openAddModal"
-      class="px-4 py-2 mb-4 text-white transition rounded bg-amber-400 hover:bg-amber-500"
-    >
-      新增菜單
-    </button>
-
-    <!-- 搜尋與篩選功能 -->
-    <div class="flex items-center gap-4 mb-4">
-      <!-- 名稱搜尋 -->
-      <input
-        v-model="searchQuery"
-        @keyup.enter="fetchMenus(1)"
-        placeholder="搜尋名稱..."
-        class="p-2 border rounded w-60"
-      />
-
-      <!-- 分類篩選 -->
-      <select v-model="selectedCategory" class="p-2 border rounded">
-        <option value="">所有分類</option>
-        <option value="飲料">飲料</option>
-        <option value="主食">主食</option>
-        <option value="甜點">甜點</option>
-        <option value="湯品">湯品</option>
-      </select>
-
-      <!-- 價格範圍 -->
-      <input
-        v-model.number="minPrice"
-        placeholder="最低價格"
-        class="p-2 border rounded w-28"
-      />
-      <input
-        v-model.number="maxPrice"
-        placeholder="最高價格"
-        class="p-2 border rounded w-28"
-      />
-
-      <!-- 搜尋按鈕 -->
+  <div class="flex h-screen bg-gray-100 overflow-hidden">
+    <!-- 統一的側邊欄 -->
+    <aside class="w-64 bg-white shadow-md flex flex-col">
+      <div class="p-6 text-lg font-semibold text-center text-gray-800 border-b">
+        餐廳後台
+      </div>
+      <nav class="flex-1 py-4">
+        <ul>
+          <li v-for="item in navigation" :key="item.name">
+            <router-link
+              :to="item.link"
+              class="block px-6 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition"
+              :class="{ 'bg-amber-100 text-amber-600 border-r-4 border-amber-500': $route.path === item.link }"
+            >
+              {{ item.name }}
+            </router-link>
+          </li>
+        </ul>
+      </nav>
       <button
-        @click="fetchMenus(1)"
-        class="px-4 py-2 text-white transition rounded bg-amber-400 hover:bg-amber-500"
+        class="px-6 py-4 text-left text-gray-600 hover:bg-red-50 hover:text-red-600 transition border-t"
+        @click="logout"
       >
-        搜尋
+        <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="mr-2" />
+        登出系統
       </button>
-    </div>
+    </aside>
 
-    <!-- 分頁按鈕 -->
-    <div class="flex justify-center gap-2 my-4">
-      <!-- 上一頁 -->
-      <button
-        @click="fetchMenus(currentPage - 1)"
-        :disabled="currentPage === 1"
-        class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:bg-gray-200"
-      >
-        上一頁
-      </button>
+    <!-- 主內容區 -->
+    <main class="flex-1 p-6 overflow-y-auto">
+      <header class="mb-6 flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-800">菜單管理</h1>
+        <div class="text-sm text-gray-500">店家 ID: {{ storeId?.substring(0, 8) }}...</div>
+      </header>
 
-      <!-- 頁碼按鈕 -->
-      <button
-        v-for="page in totalPages"
-        :key="page"
-        @click="fetchMenus(page)"
-        :class="[
-          'px-4 py-2 rounded',
-          page === currentPage
-            ? 'bg-amber-400 text-white'
-            : 'bg-amber-300 hover:bg-amber-400 text-white',
-        ]"
-      >
-        {{ page }}
-      </button>
+      <!-- 原有的操作按鈕與搜尋 -->
+      <div class="bg-white p-4 rounded shadow-sm mb-6">
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            @click="openAddModal"
+            class="px-4 py-2 text-white transition rounded bg-amber-500 hover:bg-amber-600 flex items-center"
+          >
+            <font-awesome-icon :icon="['fas', 'plus']" class="mr-2" />
+            新增菜單
+          </button>
+          
+          <div class="h-6 w-px bg-gray-300 mx-2"></div>
 
-      <!-- 下一頁 -->
-      <button
-        @click="fetchMenus(currentPage + 1)"
-        :disabled="currentPage === totalPages"
-        class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:bg-gray-200"
-      >
-        下一頁
-      </button>
-    </div>
+          <input
+            v-model="searchQuery"
+            @keyup.enter="fetchMenus(1)"
+            placeholder="搜尋名稱..."
+            class="p-2 border rounded w-52 focus:ring-2 focus:ring-amber-400 outline-none"
+          />
+          <select v-model="selectedCategory" class="p-2 border rounded focus:ring-2 focus:ring-amber-400 outline-none">
+            <option value="">所有分類</option>
+            <option value="飲料">飲料</option>
+            <option value="主食">主食</option>
+            <option value="甜點">甜點</option>
+            <option value="湯品">湯品</option>
+          </select>
+          <button
+            @click="fetchMenus(1)"
+            class="px-4 py-2 text-white transition rounded bg-gray-700 hover:bg-gray-800"
+          >
+            搜尋
+          </button>
+        </div>
+      </div>
 
-    <!-- 菜單列表 -->
-    <table class="min-w-full border border-collapse border-gray-300 table-auto">
-      <thead>
-        <tr class="bg-gray-100">
-          <th class="px-4 py-2 border border-gray-300">圖片</th>
-          <!-- 新增圖片欄 -->
-          <th class="px-4 py-2 border border-gray-300">名稱</th>
-          <th class="px-4 py-2 border border-gray-300">描述</th>
-          <!-- 標題 -->
-          <th class="px-4 py-2 border border-gray-300">價格</th>
-          <th class="px-4 py-2 border border-gray-300">分類</th>
-          <th class="px-4 py-2 border border-gray-300">操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="menu in menus" :key="menu._id">
-          <td class="px-4 py-2 text-center border border-gray-300">
-            <div class="flex items-center justify-center">
-              <img
-                v-if="menu.imageUrl"
-                :src="menu.imageUrl"
-                alt="圖片"
-                class="object-cover w-16 h-16 rounded"
-              />
+      <!-- 菜單列表表格區 -->
+      <div class="bg-white rounded shadow-sm overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">圖片</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名稱</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">價格</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">分類</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-if="isLoading">
+              <td colspan="6" class="px-6 py-10 text-center text-gray-400">載入中...</td>
+            </tr>
+            <tr v-else-if="menus.length === 0">
+              <td colspan="6" class="px-6 py-10 text-center text-gray-400">目前沒有菜單資料</td>
+            </tr>
+            <tr v-for="menu in menus" :key="menu._id" class="hover:bg-gray-50 transition">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <img v-if="menu.imageUrl" :src="menu.imageUrl" class="w-12 h-12 rounded-lg object-cover border" />
+                <div v-else class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">無圖</div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm font-medium text-gray-900">{{ menu.name }}</div>
+                <div class="text-xs text-gray-500 truncate w-40">{{ menu.description }}</div>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-900 font-semibold">{{ currency(menu.price) }}</td>
+              <td class="px-6 py-4 text-sm text-gray-500">{{ menu.category }}</td>
+              <td class="px-6 py-4">
+                <button
+                  @click="toggleAvailability(menu)"
+                  :class="[
+                    'px-2 py-1 rounded-full text-xs font-medium transition',
+                    menu.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600',
+                  ]"
+                >
+                  ● {{ menu.isAvailable ? "上架中" : "已下架" }}
+                </button>
+              </td>
+              <td class="px-6 py-4 text-sm font-medium">
+                <button @click="openEditModal(menu)" class="text-amber-600 hover:text-amber-900 mr-3">編輯</button>
+                <button @click="deleteMenu(menu._id)" class="text-red-600 hover:text-red-900">刪除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 分頁 -->
+      <div v-if="totalPages > 1" class="mt-6 flex justify-center">
+        <nav class="flex gap-1">
+          <button 
+            @click="fetchMenus(currentPage - 1)" 
+            :disabled="currentPage === 1"
+            class="p-2 border rounded hover:bg-gray-50 disabled:opacity-50"
+          >
+            <font-awesome-icon :icon="['fas', 'chevron-left']" />
+          </button>
+          <button 
+            v-for="page in totalPages" :key="page"
+            @click="fetchMenus(page)"
+            :class="['px-4 py-2 border rounded transition', page === currentPage ? 'bg-amber-500 text-white border-amber-500' : 'hover:bg-gray-50']"
+          >
+            {{ page }}
+          </button>
+          <button 
+            @click="fetchMenus(currentPage + 1)" 
+            :disabled="currentPage === totalPages"
+            class="p-2 border rounded hover:bg-gray-50 disabled:opacity-50"
+          >
+            <font-awesome-icon :icon="['fas', 'chevron-right']" />
+          </button>
+        </nav>
+      </div>
+    </main>
+    
+    <!-- 新增/編輯 Modal -->
+    <div v-if="showModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-6">
+          <h2 class="text-xl font-bold mb-4">{{ isEditing ? "編輯項目" : "新增項目" }}</h2>
+          <form @submit.prevent="isEditing ? updateMenu() : addMenu()">
+            <!-- 圖片上傳 -->
+            <div class="mb-4">
+              <label class="block mb-1 text-sm font-medium text-gray-700">商品圖片</label>
+              <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-amber-400 transition cursor-pointer relative">
+                <div v-if="!imagePreview" class="space-y-1 text-center">
+                  <font-awesome-icon :icon="['fas', 'image']" class="mx-auto h-12 w-12 text-gray-400" />
+                  <div class="flex text-sm text-gray-600">
+                    <span class="text-amber-600 font-medium">點擊上傳</span>
+                  </div>
+                  <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                </div>
+                <img v-else :src="imagePreview" class="absolute inset-0 w-full h-full object-cover rounded-md" />
+                <input type="file" accept="image/*" @change="handleFileUpload" class="absolute inset-0 opacity-0 cursor-pointer" />
+              </div>
             </div>
-          </td>
-          <td class="px-4 py-2 border border-gray-300">{{ menu.name }}</td>
-          <td class="px-4 py-2 border border-gray-300">
-            {{ menu.description }}
-          </td>
-          <td class="px-4 py-2 border border-gray-300">${{ menu.price }}</td>
-          <td class="px-4 py-2 border border-gray-300">{{ menu.category }}</td>
-          <td class="px-4 py-2 border border-gray-300">
-            <button
-              @click="openEditModal(menu)"
-              class="px-3 py-1 mr-2 text-white transition rounded bg-amber-400 hover:bg-amber-500"
-            >
-              編輯
-            </button>
-            <button
-              @click="deleteMenu(menu._id)"
-              class="px-3 py-1 text-white transition bg-gray-400 rounded hover:bg-gray-500"
-            >
-              刪除
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">名稱 <span class="text-red-500">*</span></label>
+                <input v-model="menuForm.name" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 outline-none focus:ring-2 focus:ring-amber-500" required />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700">價格 <span class="text-red-500">*</span></label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="text-gray-500 sm:text-sm">$</span>
+                  </div>
+                  <input v-model.number="menuForm.price" type="number" class="block w-full border border-gray-300 rounded-md pl-7 p-2 outline-none focus:ring-2 focus:ring-amber-500" required />
+                </div>
+              </div>
 
-    <!-- 新增/編輯菜單彈窗 -->
-    <div
-      v-if="showModal"
-      class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50"
-    >
-      <div class="p-6 bg-white rounded shadow-lg w-96">
-        <h2 class="mb-4 text-xl font-bold">
-          {{ isEditing ? "編輯菜單" : "新增菜單" }}
-        </h2>
-        <form @submit.prevent="isEditing ? updateMenu() : addMenu()">
-          <div class="mb-4">
-            <label class="block mb-1">圖片</label>
-            <input
-              type="file"
-              accept="image/*"
-              @change="handleFileUpload"
-              class="w-full p-2 border rounded"
-            />
-          </div>
-          <div class="mb-4">
-            <label class="block mb-1">名稱</label>
-            <input
-              v-model="menuForm.name"
-              class="w-full p-2 border rounded"
-              required
-            />
-          </div>
-          <div class="mb-4">
-            <label class="block mb-1">描述</label>
-            <textarea
-              v-model="menuForm.description"
-              rows="3"
-              placeholder="請輸入描述"
-              class="w-full p-2 border rounded"
-            ></textarea>
-          </div>
-          <div class="mb-4">
-            <label class="block mb-1">價格</label>
-            <input
-              v-model.number="menuForm.price"
-              type="number"
-              class="w-full p-2 border rounded"
-              required
-            />
-          </div>
-          <div class="mb-4">
-            <label class="block mb-1">分類</label>
-            <select
-              v-model="menuForm.category"
-              class="w-full p-2 border rounded"
-              required
-            >
-              <option value="">請選擇分類</option>
-              <option value="飲料">飲料</option>
-              <option value="主食">主食</option>
-              <option value="甜點">甜點</option>
-              <option value="湯品">湯品</option>
-            </select>
-          </div>
-          <div class="flex justify-end">
-            <button
-              type="button"
-              @click="closeModal"
-              class="px-4 py-2 mr-2 text-white transition bg-gray-400 rounded hover:bg-gray-500"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              class="px-4 py-2 text-white transition rounded bg-amber-400 hover:bg-amber-500"
-            >
-              {{ isEditing ? "更新" : "新增" }}
-            </button>
-          </div>
-        </form>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">分類 <span class="text-red-500">*</span></label>
+                <select v-model="menuForm.category" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 outline-none focus:ring-2 focus:ring-amber-500" required>
+                  <option value="飲料">飲料</option>
+                  <option value="主食">主食</option>
+                  <option value="甜點">甜點</option>
+                  <option value="湯品">湯品</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700">描述</label>
+                <textarea v-model="menuForm.description" rows="2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+              </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+              <button type="button" @click="closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                取消
+              </button>
+              <button type="submit" :disabled="isSaving" class="px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-md hover:bg-amber-600 transition disabled:opacity-50">
+                {{ isSaving ? "儲存中..." : (isEditing ? "確認更新" : "立即新增") }}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { storeToRefs } from 'pinia'
+import * as jose from 'jose'
 
 const router = useRouter()
 const auth = useAuth()
@@ -28,6 +29,14 @@ const handleNotificationClick = async (notification) => {
     router.push(`/articlelist/${notification.relatedId}`)
   } else if (notification.relatedType?.includes('restaurant')) {
     router.push(`/store/${notification.relatedId}`)
+  } else if (notification.relatedType === 'order') {
+    // 訂單通知導航至訂單管理或 Dashboard
+    const token = localStorage.getItem('storeToken')
+    if (token) {
+      router.push('/order-management')
+    } else {
+      router.push('/user') // 顧客導向個人中心
+    }
   }
 }
 
@@ -39,10 +48,22 @@ const handleClickOutside = (e) => {
 
 watch(() => auth.userData, (user) => {
   if (user?.id) {
-    notifStore.initSocket(user.id)
+    notifStore.initSocket(user.id, 'user')
     notifStore.fetchNotifications(user.id)
   } else {
-    notifStore.disconnectSocket()
+    // 檢查是否為店家登入
+    const storeToken = localStorage.getItem('storeToken')
+    if (storeToken) {
+      try {
+        const decoded = jose.decodeJwt(storeToken)
+        notifStore.initSocket(decoded.id, 'store')
+        notifStore.fetchNotifications(decoded.id)
+      } catch (e) {
+        notifStore.disconnectSocket()
+      }
+    } else {
+      notifStore.disconnectSocket()
+    }
   }
 }, { immediate: true })
 

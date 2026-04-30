@@ -19,7 +19,7 @@ const handleLogin = async () => {
     const resToken = await axios.post(
       `${import.meta.env.VITE_BACKEND_BASE_URL}/auth/store/login`,
       {
-        username: username.value,
+        username: username.value.trim(),
         password: password.value,
       },
     );

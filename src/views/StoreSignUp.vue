@@ -75,16 +75,16 @@ function clear() {
 
 async function handleSubmit() {
   const form = {
-    username: username.value,
+    username: username.value.trim(),
     password: password.value,
-    storeName: storeName.value,
-    storeAddress: storeAddress.value,
-    storePhone: storePhone.value,
-    storeIntro: storeIntro.value,
-    storeTaxId: storeTaxId.value,
-    contactName: contactName.value,
-    contactEmail: contactEmail.value,
-    contactPhone: contactPhone.value,
+    storeName: storeName.value.trim(),
+    storeAddress: storeAddress.value.trim(),
+    storePhone: storePhone.value.trim(),
+    storeIntro: storeIntro.value.trim(),
+    storeTaxId: storeTaxId.value.trim(),
+    contactName: contactName.value.trim(),
+    contactEmail: contactEmail.value.trim(),
+    contactPhone: contactPhone.value.trim(),
     placeId: placeId.value,
   };
   const registerSchema = z.object({

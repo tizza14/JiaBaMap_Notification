@@ -1,36 +1,27 @@
 <script setup>
 import { ref, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import axios from "axios";
-const params = new URLSearchParams(window.location.search);
-const status = params.get("status");
-const orderId = params.get("orderId");
+
+const route = useRoute();
+const status = route.query.status;
+const orderId = route.query.orderId;
 const orderDetail = ref(null);
 
 const VITE_BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
-const getOrderDetails = async (orderId) => {
+const getOrderDetails = async (id) => {
   try {
-    const res = await axios.get(
-      `${VITE_BACKEND_BASE_URL}/order/detail/${orderId}`,
-    );
-    console.log(res);
+    const res = await axios.get(`${VITE_BACKEND_BASE_URL}/order/detail/${id}`);
     orderDetail.value = res.data;
-    if (orderDetail.value !== null) {
-      console.log("取得訂單資料成功: ", orderDetail.value);
-    } else {
-      console.log("無法取得訂單資料");
-    }
   } catch (error) {
-    console.log("取得訂單資料錯誤: ", error);
+    console.error("取得訂單資料錯誤:", error);
   }
 };
 
 onMounted(() => {
   if (orderId) {
-    console.log(orderId);
     getOrderDetails(orderId);
-  } else {
-    console.log("未取得訂單 ID");
   }
 });
 </script>
@@ -41,7 +32,7 @@ onMounted(() => {
   >
     <h1 class="mb-6 text-3xl font-semibold text-amber-500">訂單明細</h1>
 
-    <div v-if="status == 'success'">
+    <div v-if="status === 'success'">
       <div v-if="orderDetail && orderDetail.items">
         <h2 class="mb-2 text-xl font-bold text-green-500">付款成功！</h2>
         <p class="mb-6 text-lg">請依照您指定的訂餐時間前往取餐。</p>
@@ -70,8 +61,16 @@ onMounted(() => {
         </div>
       </div>
       <div v-else>
-        <p>訂單資料加載中...</p>
+        <div class="flex justify-center py-6">
+          <div class="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p class="text-gray-400">訂單資料載入中...</p>
       </div>
+    </div>
+
+    <div v-else-if="status === 'cancelled'">
+      <h2 class="mb-2 text-xl font-bold text-gray-500">付款已取消</h2>
+      <p class="font-medium text-md">訂單編號：{{ orderId }}</p>
     </div>
 
     <div v-else>

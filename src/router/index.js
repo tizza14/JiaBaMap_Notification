@@ -21,136 +21,89 @@ import Cart from "@/views/Cart.vue";
 import Terms from "../views/Footer/Terms.vue";
 import Privacy from "../views/Footer/Privacy.vue";
 
+// 店家路由使用懶加載
+const MenuManagement = () => import("../views/MenuManagement.vue");
+const OrderManagement = () => import("../views/OrderManagement.vue");
+const StoreProfile = () => import("../views/StoreProfile.vue");
+
 const routes = [
-  {
-    path: "/",
-    name: "home",
-    component: HomePage,
-  },
-  {
-    path: "/store",
-    name: "store",
-    component: StorePage,
-  },
-  {
-    path: "/user",
-    name: "user",
-    component: UserProfile,
-    meta: { requiresAuth: false },
-  },
-  {
-    path: "/search",
-    name: "search",
-    component: SearchPage,
-  },
-  {
-    path: "/login",
-    name: "login",
-    component: Login,
-  },
-  {
-    path: "/myarticle",
-    name: "myArticle",
-    component: MyArticle,
-    meta: { requiresAuth: true },
-  },
-  {
-    path: "/articlelist",
-    name: "articlelist",
-    component: ArticleList,
-  },
-  {
-    path: "/about",
-    name: "about",
-    component: AboutTeam,
-  },
-  {
-    path: "/createnote",
-    name: "CreateNote",
-    component: CreateNoteView,
-  },
-  {
-    path: "/previewnote",
-    name: "PreviewNote",
-    component: PreviewNoteView,
-  },
+  { path: "/", name: "home", component: HomePage },
+  { path: "/store", name: "store", component: StorePage },
+  { path: "/user", name: "user", component: UserProfile, meta: { requiresAuth: false } },
+  { path: "/search", name: "search", component: SearchPage },
+  { path: "/login", name: "login", component: Login },
+  { path: "/myarticle", name: "myArticle", component: MyArticle, meta: { requiresAuth: true } },
+  { path: "/articlelist", name: "articlelist", component: ArticleList },
+  { path: "/about", name: "about", component: AboutTeam },
+  { path: "/createnote", name: "CreateNote", component: CreateNoteView },
+  { path: "/previewnote", name: "PreviewNote", component: PreviewNoteView },
+  { path: "/storecart/:placeId", name: "storecart", component: StoreCart },
+  { path: "/storesignup", name: "storesignup", component: StoreSignUp },
+  { path: "/checkout/:orderId", name: "CheckoutPage", component: CheckoutPage },
+  { path: "/checkout-detail", name: "CheckoutDetail", component: CheckoutDetail },
+  { path: "/storesignin", name: "storesignin", component: StoreSignIn },
+  { path: "/Cart", name: "Cart", component: Cart },
+  { path: "/terms", name: "Terms", component: Terms },
+  { path: "/privacy", name: "Privacy", component: Privacy },
+
+  // 店家後台（需要 storeToken）
   {
     path: "/dashboard",
     name: "dashboard",
     component: Dashboard,
-  },
-  {
-    path: "/storecart",
-    name: "storecart",
-    component: StoreCart,
-  },
-  {
-    path: "/storesignup",
-    name: "storesignup",
-    component: StoreSignUp,
+    meta: { requiresStoreAuth: true },
   },
   {
     path: "/menu-management",
     name: "MenuManagement",
-    component: () => import("../views/MenuManagement.vue"),
+    component: MenuManagement,
+    meta: { requiresStoreAuth: true },
   },
   {
-    path: "/checkout/:orderId",
-    name: "CheckoutPage",
-    component: CheckoutPage,
+    path: "/order-management",
+    name: "OrderManagement",
+    component: OrderManagement,
+    meta: { requiresStoreAuth: true },
   },
   {
-    path: "/checkout-detail",
-    name: "CheckoutDetail",
-    component: CheckoutDetail,
-  },
-  {
-    path: "/storesignin",
-    name: "storesignin",
-    component: StoreSignIn,
-  },
-  {
-    path: "/Cart",
-    name: "Cart",
-    component: Cart,
-  },
-  {
-    path: "/terms",
-    name: "Terms",
-    component: Terms,
-  },
-  {
-    path: "/privacy",
-    name: "Privacy",
-    component: Privacy,
+    path: "/store-profile",
+    name: "StoreProfile",
+    component: StoreProfile,
+    meta: { requiresStoreAuth: true },
   },
 ];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior(to, from, savedPosition) {
-    // 滾動到頂部
+  scrollBehavior() {
     return { top: 0 };
   },
 });
+
 router.beforeEach((to, from, next) => {
   const user = useAuth();
-  const Swal = inject("$swal");
+
+  if (to.matched.some((record) => record.meta.requiresStoreAuth)) {
+    const token = localStorage.getItem("storeToken");
+    if (!token) {
+      next({ name: "storesignin" });
+      return;
+    }
+  }
 
   if (to.matched.some((record) => record.meta.requiresAuth)) {
     if (!user.userData || Object.keys(user.userData).length === 0) {
-      Swal.fire({
-        title: "請先登入！",
-        icon: "error",
-      });
+      const Swal = inject("$swal");
+      if (Swal) {
+        Swal.fire({ title: "請先登入！", icon: "error" });
+      }
       next({ name: "home" });
-    } else {
-      next();
+      return;
     }
-  } else {
-    next();
   }
+
+  next();
 });
 
 export default router;

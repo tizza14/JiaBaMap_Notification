@@ -93,7 +93,7 @@ const closeModal = () => emit("close");
 const handleEmailLogin = async () => {
   errorMsg.value = "";
   try {
-    await authStore.emailLogin(form.value.email, form.value.password);
+    await authStore.emailLogin(form.value.email.trim(), form.value.password);
     closeModal();
   } catch (e) {
     errorMsg.value = e.response?.data?.message || "登入失敗，請再試一次";
@@ -107,7 +107,7 @@ const handleEmailRegister = async () => {
     return;
   }
   try {
-    await authStore.emailRegister(form.value.name, form.value.email, form.value.password);
+    await authStore.emailRegister(form.value.name.trim(), form.value.email.trim(), form.value.password);
     closeModal();
   } catch (e) {
     errorMsg.value = e.response?.data?.message || "註冊失敗，請再試一次";

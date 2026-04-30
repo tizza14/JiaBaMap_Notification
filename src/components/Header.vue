@@ -19,6 +19,19 @@ const isMenuOpen = ref(false);
 const menuContainer = ref(null);
 const isSearchOpen = ref(false);
 const showLoginModal = ref(false);
+const isStoreLoggedIn = ref(!!localStorage.getItem("storeToken"));
+
+// 登出店家
+const logoutStore = () => {
+  localStorage.removeItem("storeToken");
+  isStoreLoggedIn.value = false;
+  window.location.href = "/";
+};
+
+// 監聽 localStorage 變化 (處理其他頁面登入/登出的情況)
+const checkStoreStatus = () => {
+  isStoreLoggedIn.value = !!localStorage.getItem("storeToken");
+};
 
 // 新增：判斷是否為首頁
 const isHome = computed(() => route.path === "/");
@@ -84,10 +97,11 @@ onUnmounted(() => {
   isSearchOpen.value = false;
 });
 
-// 路由監聽，如果路由改變，則關閉搜尋欄和選單
+// 路由監聽，如果路由改變，則關閉搜尋欄和選單，並重新檢查店家登入狀態
 watch(route, () => {
   isSearchOpen.value = false;
   isMenuOpen.value = false;
+  checkStoreStatus(); // 強制檢查 Token 狀態
 });
 </script>
 
@@ -199,16 +213,31 @@ watch(route, () => {
             >發表食記</router-link
           >
           <hr class="border-amber-200" />
-          <li>
-            <router-link to="/storesignup" class="block p-2 text-amber-500 hover:bg-amber-100">
-              店家註冊
-            </router-link>
-          </li>
-          <li>
-            <router-link to="/storesignin" class="block p-2 text-amber-500 hover:bg-amber-100">
-              店家登入
-            </router-link>
-          </li>
+          <!-- 店家專區 - 手機版動態顯示 -->
+          <template v-if="!isStoreLoggedIn">
+            <li>
+              <router-link to="/storesignup" class="block p-2 text-amber-500 hover:bg-amber-100">
+                店家註冊
+              </router-link>
+            </li>
+            <li>
+              <router-link to="/storesignin" class="block p-2 text-amber-500 hover:bg-amber-100">
+                店家登入
+              </router-link>
+            </li>
+          </template>
+          <template v-else>
+            <li>
+              <router-link to="/dashboard" class="block p-2 font-bold text-amber-600 hover:bg-amber-100">
+                管理後台
+              </router-link>
+            </li>
+            <li>
+              <button @click="logoutStore" class="w-full p-2 text-center text-red-500 hover:bg-red-50">
+                登出店家
+              </button>
+            </li>
+          </template>
 
           <hr class="border-amber-200" />
           <li v-if="user.userData">
@@ -253,28 +282,47 @@ watch(route, () => {
         <!-- 店家專區的下拉選單 -->
         <div class="relative inline-block text-left group">
           <button
-            class="flex items-center p-2 rounded-md text-amber-500 hover:bg-amber-100 focus:outline-none min-w-20 whitespace-nowrap"
+            class="flex items-center p-2 rounded-md text-amber-500 hover:bg-amber-100 focus:outline-none min-w-20 whitespace-nowrap font-medium"
           >
-            店家專區<span class="ml-1">&#x25BC;</span>
+            {{ isStoreLoggedIn ? "管理後台" : "店家專區" }}<span class="ml-1">&#x25BC;</span>
           </button>
           <div
             class="absolute right-0 z-50 hidden w-32 mt-0 bg-white rounded-md shadow-lg group-hover:block"
           >
             <ul class="py-1">
-              <li>
-                <router-link
-                  to="/storesignup"
-                  class="block px-4 py-2 text-amber-500 hover:bg-amber-100"
-                  >店家註冊</router-link
-                >
-              </li>
-              <li>
-                <router-link
-                  to="/storesignin"
-                  class="block px-4 py-2 text-amber-500 hover:bg-amber-100"
-                  >店家登入</router-link
-                >
-              </li>
+              <template v-if="!isStoreLoggedIn">
+                <li>
+                  <router-link
+                    to="/storesignup"
+                    class="block px-4 py-2 text-amber-500 hover:bg-amber-100"
+                    >店家註冊</router-link
+                  >
+                </li>
+                <li>
+                  <router-link
+                    to="/storesignin"
+                    class="block px-4 py-2 text-amber-500 hover:bg-amber-100"
+                    >店家登入</router-link
+                  >
+                </li>
+              </template>
+              <template v-else>
+                <li>
+                  <router-link
+                    to="/dashboard"
+                    class="block px-4 py-2 text-amber-500 hover:bg-amber-100 font-bold"
+                    >進入後台</router-link
+                  >
+                </li>
+                <li>
+                  <button
+                    @click="logoutStore"
+                    class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    登出店家
+                  </button>
+                </li>
+              </template>
             </ul>
           </div>
         </div>
@@ -359,28 +407,47 @@ watch(route, () => {
         <!-- 店家專區的下拉選單 -->
         <div class="relative inline-block text-left group">
           <button
-            class="flex items-center p-2 rounded-md text-amber-500 hover:bg-amber-100 focus:outline-none min-w-20 whitespace-nowrap"
+            class="flex items-center p-2 rounded-md text-amber-500 hover:bg-amber-100 focus:outline-none min-w-20 whitespace-nowrap font-medium"
           >
-            店家專區<span class="ml-1">&#x25BC;</span>
+            {{ isStoreLoggedIn ? "管理後台" : "店家專區" }}<span class="ml-1">&#x25BC;</span>
           </button>
           <div
             class="absolute right-0 z-50 hidden w-32 mt-0 bg-white rounded-md shadow-lg group-hover:block"
           >
             <ul class="py-1">
-              <li>
-                <router-link
-                  to="/storesignup"
-                  class="block px-4 py-2 text-amber-500 hover:bg-amber-100"
-                  >店家註冊</router-link
-                >
-              </li>
-              <li>
-                <router-link
-                  to="/storesignin"
-                  class="block px-4 py-2 text-amber-500 hover:bg-amber-100"
-                  >店家登入</router-link
-                >
-              </li>
+              <template v-if="!isStoreLoggedIn">
+                <li>
+                  <router-link
+                    to="/storesignup"
+                    class="block px-4 py-2 text-amber-500 hover:bg-amber-100"
+                    >店家註冊</router-link
+                  >
+                </li>
+                <li>
+                  <router-link
+                    to="/storesignin"
+                    class="block px-4 py-2 text-amber-500 hover:bg-amber-100"
+                    >店家登入</router-link
+                  >
+                </li>
+              </template>
+              <template v-else>
+                <li>
+                  <router-link
+                    to="/dashboard"
+                    class="block px-4 py-2 text-amber-500 hover:bg-amber-100 font-bold"
+                    >進入後台</router-link
+                  >
+                </li>
+                <li>
+                  <button
+                    @click="logoutStore"
+                    class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    登出店家
+                  </button>
+                </li>
+              </template>
             </ul>
           </div>
         </div>

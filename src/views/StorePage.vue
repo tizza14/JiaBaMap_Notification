@@ -372,7 +372,7 @@ document.addEventListener("click", handleDocumentClick);
             </button>
           </a>
 
-          <router-link to="/storecart">
+          <router-link :to="`/storecart/${restaurantStore.placesId}`">
             <button class="p-2 mt-6 mx-4 rounded-lg shadow text-amber-500">
               訂餐
             </button>

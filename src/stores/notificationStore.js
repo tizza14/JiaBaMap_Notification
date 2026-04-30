@@ -68,7 +68,7 @@ export const useNotificationStore = defineStore('notification', () => {
     }
   }
 
-  function initSocket(userId) {
+  function initSocket(userId, type = 'user') {
     if (!userId) return
 
     if (socket?.connected) {
@@ -76,7 +76,10 @@ export const useNotificationStore = defineStore('notification', () => {
       return
     }
 
-    const token = localStorage.getItem('userToken')
+    const token = type === 'store' 
+      ? localStorage.getItem('storeToken') 
+      : localStorage.getItem('userToken')
+    
     if (!token) return
 
     socket = io(BACKEND_URL, {
@@ -136,18 +139,21 @@ export const useNotificationStore = defineStore('notification', () => {
 
   function sendBrowserNotification(notification) {
     if ('Notification' in window && window.Notification.permission === 'granted') {
-      new window.Notification('新通知', {
-        body: getNotificationMessage(notification.actionType),
-        icon: notification.userImg || notification.metadata?.userImg || '/default-avatar.jpg'
+      const message = getNotificationMessage(notification.actionType, notification.metadata)
+      new window.Notification('呷飽地圖通知', {
+        body: message,
+        icon: notification.userImg || notification.metadata?.userImg || '/public/favicon.jpg'
       })
     }
   }
 
-  function getNotificationMessage(actionType) {
+  function getNotificationMessage(actionType, metadata = {}) {
     const messages = {
       comment: '有人留言了你的文章',
       like: '有人按讚了你的文章',
-      reply: '有人回覆了你的留言'
+      reply: '有人回覆了你的留言',
+      new_order: `收到來自 ${metadata.userName || '顧客'} 的新訂單！`,
+      order_status: `您的訂單狀態更新為：${metadata.statusText || '處理中'}`
     }
     return messages[actionType] || '你有新的通知'
   }

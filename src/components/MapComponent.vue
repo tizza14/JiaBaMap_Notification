@@ -26,18 +26,31 @@ watch(
     if (!map.value) return;
 
     markers.forEach((marker) => {
-      marker.setIcon(null); // 使用預設的紅色標記
-      marker.setAnimation(null); // 停止任何動畫
+      // 停止所有動畫並恢復預設層級
+      marker.setAnimation(null);
+      marker.setZIndex(1);
     });
+
+    if (!newPlaceId) {
+      infoWindows.forEach((window) => window.close());
+      return;
+    }
+
     // 找到對應的標記
     const marker = markers.find((m) => m.placeId === newPlaceId);
     if (marker) {
-      if (newPlaceId) {
-        // 放大效果可以縮放
-        marker.setAnimation(google.maps.Animation.BOUNCE); // 使用 BOUNCE 效果
-        google.maps.event.trigger(marker, "click");
-      } else {
+      // 顯著效果：跳動 (BOUNCE) 並置頂
+      marker.setAnimation(google.maps.Animation.BOUNCE);
+      marker.setZIndex(1000);
+      
+      // 開啟對應的 InfoWindow
+      const index = markers.indexOf(marker);
+      if (index !== -1 && infoWindows[index]) {
         infoWindows.forEach((window) => window.close());
+        infoWindows[index].open({
+          map: map.value,
+          anchor: marker,
+        });
       }
     }
   },
@@ -46,7 +59,6 @@ watch(
 // 初始化 Google 地圖
 const initMap = async () => {
   const customMapStyle = [
-    // { featureType: "all", elementType: "labels", stylers: [{ visibility: "off" }] },
     {
       featureType: "poi",
       elementType: "all",
@@ -74,9 +86,10 @@ const initMap = async () => {
     const initialCenter = districts.value;
 
     map.value = new google.maps.Map(mapContainer.value, {
-      center: initialCenter, // 台北市中心
+      center: initialCenter,
       zoom: 15,
-      styles: customMapStyle, // 套用自定義樣式
+      styles: customMapStyle,
+      mapId: "DEMO_MAP_ID", // AdvancedMarkerElement 需要 mapId
     });
 
     // 地圖加載完成後首次更新標記
@@ -94,122 +107,85 @@ const updateMarkers = () => {
   }
   clearMarkers();
   places.value.forEach((place) => {
+    // 1. 準備 InfoWindow
+    const openingStatus = place.openNow ? "營業中" : "已打烊";
+    const infoWindow = new google.maps.InfoWindow({
+      content: `
+            <div class="flex w-[320px] h-[120px] bg-white rounded-lg p-2 overflow-hidden relative">
+              <button class="absolute text-gray-500 top-1 right-2 hover:text-gray-700 z-10" 
+                      onclick="this.closest('.gm-style-iw').querySelector('.gm-ui-hover-effect').click()" 
+                      style="outline: none; background: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                ✕
+              </button>
+              <img 
+                src="${photoGet(place.photoId)}" 
+                alt="${place.name}"
+                class="w-[100px] h-[105px] object-cover rounded"
+                onerror="this.src='https://placehold.co/100x105?text=No+Photo'"
+              />
+              <div class="pl-2 w-[200px] overflow-hidden">
+                <h3 class="text-base font-bold leading-6 truncate text-amber-500">${place.name}</h3>
+                <div class="flex items-center text-sm mb-1">
+                  ${
+                    place.rating
+                      ? `
+                    <div class="bg-orange-600 px-2 h-[18px] rounded-[9px] flex items-center justify-center text-white text-xs">
+                      <span class="mr-1">${place.rating.toFixed(1)}</span>
+                      <svg style="width: 10px; height: 10px;" fill="currentColor" viewBox="0 0 576 512"><path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"></path></svg>
+                    </div>
+                    <span class="ml-2 text-gray-500 text-xs">(${place.userRatingCount || 0}則評論)</span>
+                  `
+                      : '<span class="text-gray-400 text-xs">暫無評分</span>'
+                  }
+                </div>
+                <p class="text-xs text-gray-600 line-clamp-2 mb-1">${place.address || "地址未提供"}</p>
+                <span class="block text-xs font-bold ${place.openNow ? "text-green-600" : "text-red-600"}">${openingStatus}</span>
+              </div>
+            </div>
+          `,
+    });
+
+    google.maps.event.addListener(infoWindow, "domready", () => {
+      const closeButton = document.querySelector(".gm-ui-hover-effect");
+      const contentWrapper = document.querySelector(".gm-style-iw-c");
+      if (closeButton) closeButton.style.display = "none";
+      if (contentWrapper) {
+        contentWrapper.style.padding = "0";
+        contentWrapper.style.borderRadius = "4px";
+        contentWrapper.style.overflow = "hidden";
+      }
+    });
+
+    // 2. 準備 Marker
     const marker = new google.maps.Marker({
-      position: {
-        lat: place.lat,
-        lng: place.lng,
-      },
+      position: { lat: place.lat, lng: place.lng },
       map: map.value,
       title: place.name,
-      placeId: place.id, // 保存 placeId 以便後續查找
+      // 移除 icon 屬性以回復 Google Maps 預設的紅色圖釘造型
+    });
+    
+    marker.placeId = place.id;
+
+    // 3. 事件綁定
+    marker.addListener("click", () => {
+      store.setHoveredPlace(place.id);
+      infoWindows.forEach((otherInfoWindow) => otherInfoWindow.close());
+      infoWindow.open({
+        map: map.value,
+        anchor: marker,
+      });
     });
 
-    // 添加滑鼠事件
     marker.addListener("mouseover", () => {
       store.setHoveredPlace(place.id);
-      google.maps.event.trigger(marker, "click"); // 觸發 InfoWindow
     });
 
-    marker.addListener("mouseover", () => {
-      store.setHoveredPlace(place.id);
-      google.maps.event.trigger(marker, "click");
-
-      // 滾動到對應的餐廳卡片
-      const element = document.querySelector(`[data-place-id="${place.id}"]`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
+    marker.addListener("mouseout", () => {
+      store.setHoveredPlace(null);
     });
 
-    // 使用 PlacesService 取得地點的詳細資料
-    const service = new google.maps.places.PlacesService(map.value);
-    service.getDetails({ placeId: place.id }, (placeDetails, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK) {
-        // const isOpen = placeDetails.opening_hours?.isOpen(new Date()); // 使用 isOpen() 檢查是否營業
-        const openingStatus = place.openNow ? "營業中" : "已打烊"; // 根據 isOpen 判斷營業狀態
-
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-                <div class="flex w-[320px] h-[120px] bg-white rounded-lg p-2 overflow-hidden">
-                  <button class="absolute text-gray-500 top-1 right-2 hover:text-gray-700" 
-                          onclick="this.closest('.gm-style-iw').querySelector('.gm-ui-hover-effect').click()" 
-                          style="outline: none;">
-                    ✕
-                  </button>
-                  <img 
-                    src="${photoGet(place.photoId) || "/api/placeholder/96/96"}" 
-                    alt="${place.name}"
-                    class="w-[100px] h-[105px] object-cover"
-                  />
-                  <div class="pl-2  w-[200px] overflow-hidden">
-                    <h3 class="text-base font-medium leading-6 truncate text-amber-500">${place.name}</h3>
-                    <div class="flex items-center text-sm text-white">
-                      ${
-                        place.rating
-                          ? `
-                        <span class="bg-orange-600 w-[46px] h-[18px] rounded-[9px] flex items-center justify-center">
-                          <span class="mr-1 text-xs ">${place.rating.toFixed(1)}</span>
-                          <span>
-                            <svg class="svg-inline--fa fa-star" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="star" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path class="" fill="currentColor" d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"></path></svg></span>
-                          </span>
-                        <span class="ml-2 text-gray-500">(${place.userRatingCount || 0}則評論)</span>
-                      `
-                          : "暫無評分"
-                      }
-                    </div>
-                    <p class="text-sm text-black-700 line-clamp-2">${place.address || "地址未提供"}</p>
-                    <span class="block text-sm font-bold text-gray-800">${openingStatus}</span>
-                  </div>
-                </div>
-              `,
-        });
-
-        google.maps.event.addListener(infoWindow, "domready", () => {
-          // 找到所有需要調整的元素
-          const closeButton = document.querySelector(".gm-ui-hover-effect");
-          const contentWrapper = document.querySelector(".gm-style-iw-c");
-          const contentChild = document.querySelector(".gm-style-iw-d");
-          const backgroundWrapper = document.querySelector(".gm-style-iw-t");
-          const contnetPadd = document.querySelector(".gm-style-iw-ch");
-
-          if (closeButton) {
-            closeButton.style.display = "none";
-          }
-
-          if (contentWrapper) {
-            contentWrapper.style.padding = "0";
-            contentWrapper.style.borderRadius = "4px"; // 調整圓角
-            contentWrapper.style.overflow = "hidden"; // 確保內容不會溢出
-          }
-
-          if (contentChild) {
-            contentChild.style.padding = "0";
-            contentChild.style.overflow = "hidden"; // 防止捲軸出現
-          }
-
-          if (backgroundWrapper) {
-            backgroundWrapper.style.background = "transparent";
-          }
-
-          if (contnetPadd) {
-            contnetPadd.style.padding = "0";
-          }
-        });
-
-        marker.addListener("click", () => {
-          infoWindows.forEach((otherInfoWindow) => otherInfoWindow.close());
-          infoWindow.open({
-            map: map.value,
-            anchor: marker,
-          });
-        });
-
-        markers.push(marker); // 添加標記到數組
-        infoWindows.push(infoWindow); // 添加 InfoWindow 到數組
-      } else {
-        console.error("無法獲取地點詳細資料", status);
-      }
-    });
+    markers.push(marker);
+    infoWindows.push(infoWindow);
   });
 };
 
@@ -259,6 +235,7 @@ const places = computed(() => Search.result);
 const districts = computed(() => Search.coordinate);
 
 const photoGet = (photoId) => {
+  if (!photoId) return "https://placehold.co/100x105?text=No+Photo";
   return `${import.meta.env.VITE_BACKEND_BASE_URL}/restaurants/photos/${photoId}`;
 };
 

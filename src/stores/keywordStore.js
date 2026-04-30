@@ -8,6 +8,7 @@ export const useKeywordStore = defineStore("keyword", () => {
   let selectedDistrict = ref("中正區");
   let coordinate = ref({ lat: 25.032404, lng: 121.519033 });
   const isOpen = ref(false);
+  const isOrderable = ref(false);
   const result = ref([]);
   const selectedCost = ref("default");
   const Swal = inject("$swal");
@@ -103,6 +104,10 @@ export const useKeywordStore = defineStore("keyword", () => {
 
     if (isOpen.value) {
       filtered = filtered.filter((place) => place.openNow);
+    }
+
+    if (isOrderable.value) {
+      filtered = filtered.filter((place) => place.isOrderable);
     }
 
     if (selectedCost.value !== "default") {
@@ -273,6 +278,7 @@ export const useKeywordStore = defineStore("keyword", () => {
     selectedDistrict,
     coordinate,
     isOpen,
+    isOrderable,
     result,
     selectedCost,
     sortOptions,

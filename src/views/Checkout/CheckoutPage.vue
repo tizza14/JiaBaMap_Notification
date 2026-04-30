@@ -13,7 +13,6 @@ const paymentBackendUrl = (
 const route = useRoute();
 const router = useRouter();
 const orderId = route.params.orderId;
-console.log(orderId);
 
 const orderDetail = ref(null);
 const shoppingCart = {
@@ -48,10 +47,8 @@ const getOrderDetails = async (orderId) => {
     }));
     shoppingCart.orderId = orderDetail.value.orderId;
     shoppingCart.packages.amount = orderDetail.value.totalAmount;
-    console.log("取得訂單資料成功: ", orderDetail.value);
-    console.log("取得linepay payload: ", shoppingCart);
   } catch (error) {
-    console.log("取得訂單資料錯誤: ", error);
+    console.error("取得訂單資料錯誤:", error);
   }
 };
 
@@ -61,17 +58,13 @@ onMounted(() => {
   }
 });
 
-// 監聽 orderDetail 的變化
-// watch(orderDetail, (newValue) => {
-//   if (newValue) {
-//     console.log("已更新orderDetail: ", orderDetail.value);
-//     shoppingCart.value = {
-//       id: orderDetail.value.orderId,
-//       amount: orderDetail.value.totalAmount,
-//       products: orderDetail.value.items,
-//     };
-//   }
-// });
+const savePickupInfo = async () => {
+  await axios.put(`${VITE_BACKEND_BASE_URL}/order/${orderId}`, {
+    pickupName: pickupName.value || "",
+    pickupPhone: pickupPhone.value || "",
+    pickupTime: formattedDateTime.value || undefined,
+  });
+};
 
 const handelPayment = async (shoppingCart) => {
   try {
@@ -79,8 +72,6 @@ const handelPayment = async (shoppingCart) => {
     const { data } = await axios.post(url, shoppingCart);
     const paymentUrl = data?.response?.info?.paymentUrl?.web;
     const returnCode = data?.response?.returnCode;
-
-    console.log(returnCode);
 
     if (returnCode === "0000") {
       window.location.href = paymentUrl;
@@ -91,18 +82,18 @@ const handelPayment = async (shoppingCart) => {
         icon: "error",
         confirmButtonText: "好",
       }).then(() => {
-        window.location.href = "/checkout/677a5bd8853f37ea78725bf4";
+        router.push(`/checkout/${orderId}`);
       });
     }
   } catch (err) {
-    console.log("error: ", err);
+    console.error("建立付款請求失敗:", err);
     Swal.fire({
       title: "Error!",
       text: "建立付款請求失敗，請稍後再試",
       icon: "error",
       confirmButtonText: "好",
     }).then(() => {
-      window.location.href = "/checkout/677a5bd8853f37ea78725bf4";
+      router.push(`/checkout/${orderId}`);
     });
   }
 };
@@ -110,14 +101,22 @@ const handelPayment = async (shoppingCart) => {
 const addProducts = () => {
   router.push(`/storecart`);
 };
-const gotoOrderDetail = (orderId) => {
-  router.push(`/checkout-detail?transactionId=${orderId}&status=success`);
+
+const gotoOrderDetail = (id) => {
+  router.push(`/checkout-detail?orderId=${id}&status=success`);
 };
-const submitOrder = (selectedPayment) => {
-  if (selectedPayment === "LINEPay") {
+
+const submitOrder = async (payment) => {
+  try {
+    await savePickupInfo();
+  } catch (err) {
+    console.error("儲存取貨資訊失敗:", err);
+  }
+
+  if (payment === "LINEPay") {
     handelPayment(shoppingCart);
   } else {
-    gotoOrderDetail(route.params.orderId);
+    gotoOrderDetail(orderId);
   }
 };
 </script>
@@ -359,7 +358,7 @@ const submitOrder = (selectedPayment) => {
         </div>
         <!-- End First Content -->
 
-        <!-- First Content -->
+        <!-- Second Content -->
         <div
           data-hs-stepper-content-item='{
             "index": 2
@@ -387,12 +386,12 @@ const submitOrder = (selectedPayment) => {
             <div class="w-full text-left">
               <h2 class="mb-1 font-bold">取貨人資訊</h2>
               <div class="max-w-sm">
-                <label for="input-label" class="block mb-2 text-sm font-medium"
+                <label for="pickup-name" class="block mb-2 text-sm font-medium"
                   >姓名</label
                 >
                 <input
-                  type="email"
-                  id="input-label"
+                  type="text"
+                  id="pickup-name"
                   class="block w-full px-4 py-3 mb-2 text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
                   placeholder="請輸入取貨人姓名"
                   v-model="pickupName"
@@ -400,12 +399,12 @@ const submitOrder = (selectedPayment) => {
                 />
               </div>
               <div class="max-w-sm">
-                <label for="input-label" class="block mb-2 text-sm font-medium"
+                <label for="pickup-phone" class="block mb-2 text-sm font-medium"
                   >聯絡電話</label
                 >
                 <input
-                  type="email"
-                  id="input-label"
+                  type="tel"
+                  id="pickup-phone"
                   class="block w-full px-4 py-3 mb-2 text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
                   placeholder="請輸入取貨人聯絡電話"
                   v-model="pickupPhone"
@@ -441,7 +440,6 @@ const submitOrder = (selectedPayment) => {
                     id="linepay-payment"
                     v-model="selectedPayment"
                     value="LINEPay"
-                    checked=""
                   />
                   <span class="text-sm text-gray-500 ms-3">
                     <img src="/LINEPay.png" alt="LINEPay" />
@@ -477,7 +475,6 @@ const submitOrder = (selectedPayment) => {
                     id="mobile-invoice"
                     value="手機載具"
                     v-model="selectedInvoice"
-                    checked=""
                   />
                   <span class="text-sm text-gray-500 ms-3">手機載具</span>
                 </label>
@@ -485,9 +482,9 @@ const submitOrder = (selectedPayment) => {
             </div>
           </div>
         </div>
-        <!-- End First Content -->
+        <!-- End Second Content -->
 
-        <!-- First Content -->
+        <!-- Third Content -->
         <div
           data-hs-stepper-content-item='{
             "index": 3
@@ -502,7 +499,7 @@ const submitOrder = (selectedPayment) => {
               <tbody>
                 <tr class="h-12 px-4 py-2 border-b border-gray-300">
                   <td>訂購門市</td>
-                  <td>{{ orderDetail.restaurantName }}</td>
+                  <td>{{ orderDetail.storeName }}</td>
                 </tr>
                 <tr class="h-12 px-4 py-2 border-b border-gray-300">
                   <td>取貨人</td>
@@ -536,7 +533,7 @@ const submitOrder = (selectedPayment) => {
             </table>
           </div>
         </div>
-        <!-- End First Content -->
+        <!-- End Third Content -->
 
         <!-- Final Content -->
         <div

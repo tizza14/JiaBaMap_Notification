@@ -3,104 +3,121 @@ import axios from "axios";
 import { useAuth } from "@/stores/authStore";
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+
 const router = useRouter();
 const user = useAuth();
 const orders = ref([]);
+const isLoading = ref(true);
 
-const getOrder = async () => {
-  const response = await axios.get(
-    `${import.meta.env.VITE_BACKEND_BASE_URL}/order/${user.userData._id}`,
-  );
-  orders.value = response.data;
-  console.log("get order: ", orders.value);
+const statusLabel = {
+  pending: "待付款",
+  preparing: "備餐中",
+  ready: "可取餐",
+  completed: "已完成",
+  cancelled: "已取消",
+};
+
+const statusClass = {
+  pending: "bg-yellow-100 text-yellow-700",
+  preparing: "bg-blue-100 text-blue-700",
+  ready: "bg-purple-100 text-purple-700",
+  completed: "bg-green-100 text-green-700",
+  cancelled: "bg-gray-100 text-gray-500",
+};
+
+const getOrders = async () => {
+  if (!user.userData?._id) return;
+  isLoading.value = true;
+  try {
+    const response = await axios.get(
+      `${import.meta.env.VITE_BACKEND_BASE_URL}/order/${user.userData._id}`,
+    );
+    orders.value = Array.isArray(response.data) ? response.data : [];
+  } catch {
+    orders.value = [];
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 const delOrder = async (orderId) => {
-  await axios.delete(
-    `${import.meta.env.VITE_BACKEND_BASE_URL}/order/${orderId}`,
-  );
-  await getOrder();
+  await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/order/${orderId}`);
+  await getOrders();
 };
-console.log(orders);
 
 const goToPay = (orderId) => {
   router.push({ path: `/checkout/${orderId}` });
 };
-onMounted(() => {
-  getOrder();
-});
+
+onMounted(getOrders);
 </script>
 
 <template>
-  <div class="p-6">
-    <div class="min-h-screen py-8 bg-gray-100">
-      <div v-if="orders.length > 0">
-        <div class="grid grid-cols-1 gap-6 px-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div
-            v-for="order in orders"
-            class="p-4 bg-white rounded-lg shadow-md"
-          >
-            <p class="text-sm text-right text-gray-500">
-              {{ order.orderTime.slice(0, 10) }}
-            </p>
+  <div class="min-h-screen py-8 bg-gray-100 px-4">
+    <h1 class="text-2xl font-bold text-gray-700 mb-6 text-center">我的訂單</h1>
 
-            <div class="flex justify-center my-4">
-              <img
-                class="w-20 h-20 rounded-full"
-                src="https://i.imgur.com/5UshzJJ.jpeg"
-                alt="商品圖片"
-              />
-            </div>
+    <div v-if="isLoading" class="flex justify-center py-24">
+      <div class="w-10 h-10 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
 
-            <p class="text-lg text-center text-gray-800">
-              {{ order.itemsLength }} 項商品
-            </p>
-            <p class="text-lg text-center">
-              {{ order.restaurantName }}
-            </p>
+    <div v-else-if="orders.length === 0" class="flex flex-col items-center py-24 text-gray-400">
+      <font-awesome-icon :icon="['fas', 'bag-shopping']" class="text-5xl mb-4 text-gray-300" />
+      <p class="text-lg">目前沒有任何訂單</p>
+    </div>
 
-            <div class="my-4 border-t"></div>
+    <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
+      <div
+        v-for="order in orders"
+        :key="order.orderId"
+        class="p-4 bg-white rounded-lg shadow-md flex flex-col"
+      >
+        <div class="flex justify-between items-start mb-3">
+          <p class="text-sm text-gray-500">{{ order.orderTime?.slice(0, 10) }}</p>
+          <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', statusClass[order.isPaid ? (order.status || 'completed') : 'pending']]">
+            {{ statusLabel[order.status] ?? statusLabel.pending }}
+          </span>
+        </div>
 
-            <p class="text-xl font-bold text-center text-gray-800">
-              共 {{ order.totalAmount }} 元
-            </p>
-
-            <div class="flex items-center justify-between mt-4">
-              <!-- 空白填充，使中間對齊 -->
-              <div class="w-6 h-6 ml-4 text-red-500 hover:text-red-600"></div>
-
-              <button
-                @click="goToPay(order.orderId)"
-                class="px-4 py-2 text-white bg-blue-500 rounded-full hover:bg-blue-600"
-              >
-                立刻結帳
-              </button>
-
-              <button
-                @click="delOrder(order.orderId)"
-                class="ml-4 text-red-500 hover:text-red-600"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 4h6m-7 0a1 1 0 00-1 1v1h10V5a1 1 0 00-1-1m-4 0V3a1 1 0 00-2 0v1z"
-                  />
-                </svg>
-              </button>
-            </div>
+        <div class="flex justify-center my-3">
+          <div class="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+            <font-awesome-icon :icon="['fas', 'utensils']" class="text-2xl text-amber-400" />
           </div>
         </div>
-      </div>
-      <div v-else>
-        <p>購物車是空的</p>
+
+        <p class="text-lg text-center font-semibold text-gray-800">{{ order.restaurantName }}</p>
+        <p class="text-sm text-center text-gray-500 mb-3">{{ order.itemsLength }} 項商品</p>
+
+        <div class="border-t my-3"></div>
+
+        <p class="text-xl font-bold text-center text-gray-800 mb-4">共 {{ order.totalAmount }} 元</p>
+
+        <div class="flex items-center justify-between mt-auto">
+          <button
+            @click="delOrder(order.orderId)"
+            class="text-red-400 hover:text-red-500"
+            title="刪除訂單"
+          >
+            <font-awesome-icon :icon="['fas', 'trash']" />
+          </button>
+
+          <button
+            v-if="!order.isPaid && order.status !== 'cancelled'"
+            @click="goToPay(order.orderId)"
+            class="px-4 py-2 text-white bg-amber-500 rounded-full hover:bg-amber-400 text-sm"
+          >
+            立刻結帳
+          </button>
+
+          <button
+            v-else-if="order.status === 'ready'"
+            class="px-4 py-2 text-white bg-purple-500 rounded-full text-sm cursor-default"
+            disabled
+          >
+            請前往取餐
+          </button>
+
+          <div v-else></div>
+        </div>
       </div>
     </div>
   </div>
