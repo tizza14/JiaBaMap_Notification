@@ -105,7 +105,13 @@
       顯示快取資料，可能非最新
     </div>
 
-    <div v-if="Search.filteredResult[0]">
+    <!-- 搜尋中載入指示器 -->
+    <div v-if="Search.isSearching" class="flex flex-col items-center justify-center py-24 text-gray-400">
+      <div class="w-10 h-10 mb-4 border-4 rounded-full border-amber-400 border-t-transparent animate-spin"></div>
+      <p class="text-sm">搜尋中…</p>
+    </div>
+
+    <div v-else-if="Search.filteredResult[0]">
       <div
         v-for="place in visibleResults"
         :key="place.id"
@@ -226,7 +232,7 @@
         </button>
       </div>
     </div>
-    <div v-else>
+    <div v-else-if="!Search.isSearching">
       <div class="flex-wrap justify-items-center mt-[70px]">
         <p class="text-2xl font-bold">沒有符合關鍵字的餐廳</p>
         <img src="@/assets/notfindresult.png" alt="" />

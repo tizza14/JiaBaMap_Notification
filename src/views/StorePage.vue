@@ -33,10 +33,24 @@ const {
   openNow,
   storePhoto,
   bannerPhoto,
+  photoIds,
   staticMapUrl,
   menuItems,
   storeDbId,
 } = storeToRefs(restaurantStore);
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_BASE_URL?.replace(/\/+$/, "");
+const photoUrls = computed(() =>
+  (photoIds.value || []).map(
+    (id) => `${BACKEND_URL}/restaurants/photos/${id}?maxWidth=800&maxHeight=600`,
+  ),
+);
+
+const lightboxIndex = ref(null);
+const openLightbox = (i) => { lightboxIndex.value = i; };
+const closeLightbox = () => { lightboxIndex.value = null; };
+const prevPhoto = () => { lightboxIndex.value = (lightboxIndex.value - 1 + photoUrls.value.length) % photoUrls.value.length; };
+const nextPhoto = () => { lightboxIndex.value = (lightboxIndex.value + 1) % photoUrls.value.length; };
 
 // 下拉選單狀態
 const isDropdownVisible = ref(false);
@@ -303,9 +317,31 @@ onUnmounted(() => {
       <!-- 照片 -->
       <div id="photos" class="mt-10">
         <h3 class="mb-4 text-xl font-bold text-gray-700">照片</h3>
-        <div class="flex gap-3 overflow-x-auto">
-          <img v-if="storePhoto" :src="storePhoto" alt="店家照片" class="h-40 rounded-lg object-cover" loading="lazy" decoding="async" />
-          <img v-if="bannerPhoto" :src="bannerPhoto" alt="店家照片" class="h-40 rounded-lg object-cover" loading="lazy" decoding="async" />
+        <div v-if="photoUrls.length" class="grid grid-cols-3 gap-2">
+          <img
+            v-for="(url, i) in photoUrls.slice(0, 9)"
+            :key="i"
+            :src="url"
+            alt="店家照片"
+            class="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+            loading="lazy"
+            decoding="async"
+            @click="openLightbox(i)"
+            @error="(e) => e.target.style.display = 'none'"
+          />
+        </div>
+        <p v-else class="text-sm text-gray-400">尚無照片</p>
+
+        <!-- 燈箱 -->
+        <div
+          v-if="lightboxIndex !== null"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          @click.self="closeLightbox"
+        >
+          <button @click="prevPhoto" class="absolute left-4 text-white text-3xl px-3 py-1 hover:text-amber-400">‹</button>
+          <img :src="photoUrls[lightboxIndex]" class="max-h-[80vh] max-w-[90vw] rounded-lg object-contain" />
+          <button @click="nextPhoto" class="absolute right-4 text-white text-3xl px-3 py-1 hover:text-amber-400">›</button>
+          <button @click="closeLightbox" class="absolute top-4 right-4 text-white text-xl hover:text-amber-400">✕</button>
         </div>
       </div>
 

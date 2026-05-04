@@ -12,6 +12,7 @@ export const useKeywordStore = defineStore("keyword", () => {
   const result = ref([]);
   const selectedCost = ref("default");
   const isStaleData = ref(false);
+  const isSearching = ref(false);
   const Swal = inject("$swal");
 
   const sortOptions = {
@@ -196,6 +197,7 @@ export const useKeywordStore = defineStore("keyword", () => {
       Swal.fire({ text: "請輸入有效關鍵字！", icon: "warning" });
       return;
     }
+    isSearching.value = true;
     try {
       const baseUrl = import.meta.env.VITE_BACKEND_BASE_URL.replace(/\/+$/, "");
       const response = await axios.get(`${baseUrl}/restaurants/search`, {
@@ -213,6 +215,8 @@ export const useKeywordStore = defineStore("keyword", () => {
       console.error("Search error:", error);
       result.value = [];
       isStaleData.value = false;
+    } finally {
+      isSearching.value = false;
     }
   };
 
@@ -283,6 +287,7 @@ export const useKeywordStore = defineStore("keyword", () => {
     result,
     selectedCost,
     isStaleData,
+    isSearching,
     sortOptions,
     costOptions,
     districts,

@@ -312,6 +312,7 @@ export const useStore = defineStore("store", () => {
     nationalPhoneNumber,
     storePhoto,
     bannerPhoto,
+    photoIds,
     googleMapsUri,
     openNow,
     placesId,
