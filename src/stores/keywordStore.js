@@ -218,12 +218,25 @@ export const useKeywordStore = defineStore("keyword", () => {
 
   const selectDistrict = (districtName) => {
     if (districtName === "我的位置") {
-      navigator.geolocation.getCurrentPosition((position) => {
-        districts["我的位置"] = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-      });
+      if (!navigator.geolocation) {
+        Swal.fire({ text: "您的瀏覽器不支援定位功能！", icon: "error" });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          districts["我的位置"] = coords;
+          selectedDistrict.value = "我的位置";
+          coordinate.value = coords;
+        },
+        () => {
+          Swal.fire({ text: "無法取得您的位置，請確認已允許定位權限！", icon: "warning" });
+        }
+      );
+      return;
     }
 
     if (districts[districtName]) {
@@ -235,11 +248,6 @@ export const useKeywordStore = defineStore("keyword", () => {
     } else if (districts["新北市"][districtName]) {
       selectedDistrict.value = districtName;
       coordinate.value = districts["新北市"][districtName];
-    } else {
-      Swal.fire({
-        text: "尚未取得您的位置，請允許定位後再試！",
-        icon: "question",
-      });
     }
   };
 
@@ -260,11 +268,8 @@ export const useKeywordStore = defineStore("keyword", () => {
   };
 
   const nearSearch = (router, lat, lng) => {
-    coordinate.value = {
-      lat: lat,
-      lng: lng,
-    };
-    this.navigateToSearch(router, "餐廳");
+    coordinate.value = { lat, lng };
+    navigateToSearch(router, "餐廳");
   };
 
   // 返回所有狀態和方法
