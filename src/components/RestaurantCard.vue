@@ -107,7 +107,7 @@
 
     <div v-if="Search.filteredResult[0]">
       <div
-        v-for="place in Search.filteredResult"
+        v-for="place in visibleResults"
         :key="place.id"
         :data-place-id="place.id"
         class="flex items-center py-1 transition-colors duration-200 border-b"
@@ -127,7 +127,14 @@
             class="object-cover w-full h-full"
             loading="lazy"
             decoding="async"
+            @error="(e) => e.target.src = '/image/default_store.png'"
           />
+          <div
+            v-else
+            class="w-full h-full bg-gray-100 flex items-center justify-center"
+          >
+            <font-awesome-icon :icon="['fas', 'utensils']" class="text-gray-300 text-2xl" />
+          </div>
         </div>
         <div class="flex flex-col justify-between w-3/5 ml-3 sm:text-xl">
           <div class="ml-3">
@@ -206,6 +213,18 @@
           </div>
         </div>
       </div>
+      <!-- 顯示更多 -->
+      <div
+        v-if="displayCount < Search.filteredResult.length"
+        class="flex justify-center py-4"
+      >
+        <button
+          @click="loadMore"
+          class="px-6 py-2 text-sm font-medium text-amber-600 border border-amber-400 rounded-full hover:bg-amber-50 transition"
+        >
+          顯示更多
+        </button>
+      </div>
     </div>
     <div v-else>
       <div class="flex-wrap justify-items-center mt-[70px]">
@@ -222,10 +241,20 @@ import { useKeywordStore } from "@/stores/keywordStore.js";
 import { computed, ref, watch } from "vue";
 import { useStore } from "@/stores/storePage";
 import Loader from "@/components/Loader.vue";
+import { useRouter } from "vue-router";
 
 const restaurantStore = useRestaurantStore();
 const Search = useKeywordStore();
 const Store = useStore();
+const router = useRouter();
+
+const INITIAL_COUNT = 15;
+const displayCount = ref(INITIAL_COUNT);
+const visibleResults = computed(() => Search.filteredResult.slice(0, displayCount.value));
+
+const loadMore = () => {
+  displayCount.value += 10;
+};
 
 const handleMouseEnter = (placeId) => {
   restaurantStore.setHoveredPlace(placeId);
@@ -270,6 +299,7 @@ const loading = ref({});
 watch(
   () => Search.filteredResult,
   (newResults) => {
+    displayCount.value = INITIAL_COUNT;
     newResults.forEach((place) => {
       if (!loading.value[place.id]) {
         loading.value[place.id] = true;

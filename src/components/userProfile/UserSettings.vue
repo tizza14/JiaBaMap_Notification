@@ -124,6 +124,10 @@ const handleClickOutside = (event) => {
 
 document.addEventListener("click", handleClickOutside);
 
+const handleImageError = (event) => {
+  event.target.src = "/image/default_user.png";
+};
+
 // 移除全域事件監聽器
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);

@@ -34,6 +34,8 @@ export const useStore = defineStore("store", () => {
   const similarRestaurants = ref([]);
   const recommendedRestaurants = ref([]);
   const searchTopics = ref([]);
+  const storeDbId = ref(null);
+  const menuItems = ref([]);
 
   const fetchPlaceDetail = async () => {
     try {
@@ -176,6 +178,31 @@ export const useStore = defineStore("store", () => {
     brunch_restaurant:     ["咖啡廳", "早餐", "輕食"],
   };
 
+  const fetchMenu = async () => {
+    menuItems.value = [];
+    storeDbId.value = null;
+
+    try {
+      // 同步查詢：菜單（by placeId）+ 店家是否已在 JiaBaMap 註冊（for 線上訂餐按鈕）
+      const [menuRes, storeRes] = await Promise.allSettled([
+        fetch(`${import.meta.env.VITE_BACKEND_BASE_URL}/menu?placeId=${placesId.value}&limit=50`),
+        fetch(`${import.meta.env.VITE_BACKEND_BASE_URL}/store/get/${placesId.value}`),
+      ]);
+
+      if (menuRes.status === "fulfilled" && menuRes.value.ok) {
+        const menuData = await menuRes.value.json();
+        menuItems.value = menuData.menus || [];
+      }
+
+      if (storeRes.status === "fulfilled" && storeRes.value.ok) {
+        const storeData = await storeRes.value.json();
+        if (storeData._id) storeDbId.value = storeData._id;
+      }
+    } catch (err) {
+      console.error("fetchMenu error:", err);
+    }
+  };
+
   const fetchSearchTopics = () => {
     const address = formattedAddress.value;
     const type = primaryType.value;
@@ -302,6 +329,9 @@ export const useStore = defineStore("store", () => {
     fetchRecommendedRestaurants,
     searchTopics,
     fetchSearchTopics,
+    storeDbId,
+    menuItems,
+    fetchMenu,
     lat,
     lng,
   };

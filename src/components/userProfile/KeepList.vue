@@ -1,29 +1,32 @@
 <script setup>
 import axios from "axios";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useAuth } from "@/stores/authStore";
 import { useStore } from "@/stores/storePage";
+import { storeToRefs } from "pinia";
 
 const user = useAuth();
 const Store = useStore();
-const { userData } = user;
+const { userData } = storeToRefs(user);
 const dataReady = ref(false);
 const restaurants = ref([]);
 const backendUrl = import.meta.env.VITE_BACKEND_BASE_URL?.replace(/\/+$/, "");
 
 const getDetails = async () => {
-  const placeIds = userData.favorites;
-  const response = await Promise.all(
-    placeIds.map((placeId) =>
-      axios.get(`${backendUrl}/restaurants/${placeId}`),
-    ),
+  const placeIds = userData.value?.favorites;
+  if (!placeIds?.length) { dataReady.value = true; return; }
+  const results = await Promise.allSettled(
+    placeIds.map((placeId) => axios.get(`${backendUrl}/restaurants/${placeId}`)),
   );
-  restaurants.value = response.map((response) => response.data);
+  restaurants.value = results
+    .filter((r) => r.status === "fulfilled")
+    .map((r) => r.value.data);
   dataReady.value = true;
 };
 
 const photos = (photoId) => {
-  return `${backendUrl}/restaurants/photos/${photoId}`;
+  if (!photoId) return "/image/default_store.png";
+  return `${backendUrl}/restaurants/photos/${photoId}?maxWidth=400&maxHeight=320`;
 };
 
 const StoreId = (placeId) => {
@@ -46,8 +49,9 @@ onMounted(() => {
         <!-- 餐廳圖 -->
         <div class="w-40 h-32">
           <img
-            :src="photos(restaurant.photoIds[0])"
+            :src="photos(restaurant.photoIds?.[0])"
             class="object-cover w-full h-full mx-3 rounded-md"
+            @error="(e) => e.target.src = '/image/default_store.png'"
           />
         </div>
         <!-- 餐廳排名、名稱 -->

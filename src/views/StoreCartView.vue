@@ -172,13 +172,13 @@ const openItemModal = async (item) => {
       note,
     });
 
+    const token = localStorage.getItem("userToken");
     await axios.post(`${BACKEND_URL}/order/`, {
-      customerId: userData.value._id,
       storeId: storeId.value,
       storeName: storeInfo.value.name,
       pickupTime: Date.now(),
       items: [{ productId: item._id, productName: item.name, price: item.price, quantity }],
-    });
+    }, { headers: { Authorization: `Bearer ${token}` } });
 
     await Swal.fire({ title: "成功", text: "已加入購物車", icon: "success", timer: 1500 });
   }

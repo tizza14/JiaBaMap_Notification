@@ -29,8 +29,10 @@ const getOrders = async () => {
   if (!user.userData?._id) return;
   isLoading.value = true;
   try {
+    const token = localStorage.getItem("userToken");
     const response = await axios.get(
       `${import.meta.env.VITE_BACKEND_BASE_URL}/order/${user.userData._id}`,
+      { headers: { Authorization: `Bearer ${token}` } },
     );
     orders.value = Array.isArray(response.data) ? response.data : [];
   } catch {
@@ -41,7 +43,10 @@ const getOrders = async () => {
 };
 
 const delOrder = async (orderId) => {
-  await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/order/${orderId}`);
+  const token = localStorage.getItem("userToken");
+  await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/order/${orderId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   await getOrders();
 };
 
