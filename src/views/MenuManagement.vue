@@ -4,9 +4,10 @@ import axios from "axios";
 import * as jose from "jose";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
+import StoreSidebar from "@/components/StoreSidebar.vue";
 
 // 從 JWT 取得 storeId
-const token = localStorage.getItem("storeToken");
+const token = sessionStorage.getItem("storeToken");
 const storeId = token ? jose.decodeJwt(token).id : null;
 
 const menus = ref([]);
@@ -213,7 +214,7 @@ const currency = (value) => {
 };
 
 const logout = () => {
-  localStorage.removeItem("storeToken");
+  sessionStorage.removeItem("storeToken");
   window.location.href = "/storesignin";
 };
 
@@ -222,32 +223,7 @@ onMounted(fetchMenus);
 
 <template>
   <div class="flex h-screen bg-gray-100 overflow-hidden">
-    <!-- 統一的側邊欄 -->
-    <aside class="w-64 bg-white shadow-md flex flex-col">
-      <div class="p-6 text-lg font-semibold text-center text-gray-800 border-b">
-        餐廳後台
-      </div>
-      <nav class="flex-1 py-4">
-        <ul>
-          <li v-for="item in navigation" :key="item.name">
-            <router-link
-              :to="item.link"
-              class="block px-6 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition"
-              :class="{ 'bg-amber-100 text-amber-600 border-r-4 border-amber-500': $route.path === item.link }"
-            >
-              {{ item.name }}
-            </router-link>
-          </li>
-        </ul>
-      </nav>
-      <button
-        class="px-6 py-4 text-left text-gray-600 hover:bg-red-50 hover:text-red-600 transition border-t"
-        @click="logout"
-      >
-        <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="mr-2" />
-        登出系統
-      </button>
-    </aside>
+    <StoreSidebar />
 
     <!-- 主內容區 -->
     <main class="flex-1 p-6 overflow-y-auto">

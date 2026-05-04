@@ -24,7 +24,7 @@ const handleLogin = async () => {
       },
     );
 
-    localStorage.setItem("storeToken", resToken.data.token);
+    sessionStorage.setItem("storeToken", resToken.data.token);
     storeId.value = jose.decodeJwt(resToken.data.token).id;
     placeId.value = jose.decodeJwt(resToken.data.token).placeId;
 

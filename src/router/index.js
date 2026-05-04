@@ -85,7 +85,7 @@ router.beforeEach((to, from, next) => {
   const user = useAuth();
 
   if (to.matched.some((record) => record.meta.requiresStoreAuth)) {
-    const token = localStorage.getItem("storeToken");
+    const token = sessionStorage.getItem("storeToken");
     if (!token) {
       next({ name: "storesignin" });
       return;

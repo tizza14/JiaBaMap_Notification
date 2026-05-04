@@ -15,7 +15,7 @@ export const useNotificationStore = defineStore('notification', () => {
 
   const authHeader = (type = activeTokenType.value) => {
     const token = type === 'store'
-      ? localStorage.getItem('storeToken')
+      ? sessionStorage.getItem('storeToken')
       : localStorage.getItem('userToken')
 
     return {
@@ -85,8 +85,8 @@ export const useNotificationStore = defineStore('notification', () => {
       return
     }
 
-    const token = type === 'store' 
-      ? localStorage.getItem('storeToken') 
+    const token = type === 'store'
+      ? sessionStorage.getItem('storeToken')
       : localStorage.getItem('userToken')
     
     if (!token) return

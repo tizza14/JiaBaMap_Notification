@@ -3,8 +3,9 @@ import { ref, onMounted } from "vue";
 import * as jose from "jose";
 import axios from "axios";
 import Swal from "sweetalert2";
+import StoreSidebar from "@/components/StoreSidebar.vue";
 
-const token = localStorage.getItem("storeToken");
+const token = sessionStorage.getItem("storeToken");
 const storeId = token ? jose.decodeJwt(token).id : null;
 const authHeaders = { Authorization: `Bearer ${token}` };
 
@@ -120,25 +121,7 @@ onMounted(loadProfile);
 
 <template>
   <div class="flex h-screen bg-gray-100">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-white shadow-md flex flex-col">
-      <div class="p-6 text-lg font-semibold text-center text-gray-800 border-b">餐廳後台</div>
-      <nav class="flex-1 py-4">
-        <ul>
-          <li><router-link to="/dashboard" class="block px-6 py-3 text-gray-700 hover:bg-amber-50 transition">首頁</router-link></li>
-          <li>
-            <router-link
-              to="/store-profile"
-              class="block px-6 py-3 text-amber-600 bg-amber-50 border-r-4 border-amber-400 font-medium"
-            >
-              餐廳資訊
-            </router-link>
-          </li>
-          <li><router-link to="/menu-management" class="block px-6 py-3 text-gray-700 hover:bg-amber-50 transition">菜單管理</router-link></li>
-          <li><router-link to="/order-management" class="block px-6 py-3 text-gray-700 hover:bg-amber-50 transition">訂單管理</router-link></li>
-        </ul>
-      </nav>
-    </aside>
+    <StoreSidebar />
 
     <!-- Main -->
     <main class="flex-1 p-6 overflow-y-auto">

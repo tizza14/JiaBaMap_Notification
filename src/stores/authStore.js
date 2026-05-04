@@ -7,8 +7,27 @@ import { useNotificationStore } from "./notificationStore";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
+const initUserData = () => {
+  const token = localStorage.getItem("userToken");
+  if (token) {
+    try {
+      const { exp } = jose.decodeJwt(token);
+      if (exp * 1000 < Date.now()) {
+        localStorage.removeItem("userToken");
+        localStorage.removeItem("userData");
+        return null;
+      }
+    } catch {
+      localStorage.removeItem("userToken");
+      localStorage.removeItem("userData");
+      return null;
+    }
+  }
+  return JSON.parse(localStorage.getItem("userData")) || null;
+};
+
 export const useAuth = defineStore("auth", () => {
-  const userData = ref(JSON.parse(localStorage.getItem("userData")) || null);
+  const userData = ref(initUserData());
   const router = useRouter();
   const Swal = inject("$swal");
   const userId = ref("");
@@ -51,7 +70,6 @@ export const useAuth = defineStore("auth", () => {
     });
   };
 
-  // ── 內部：token 存入 + 取得使用者資料 ───────────────────────────
   const _handleToken = async (token) => {
     localStorage.setItem("userToken", token);
     userId.value = jose.decodeJwt(token).id;
@@ -69,14 +87,12 @@ export const useAuth = defineStore("auth", () => {
     userData.value = response.data;
   };
 
-  // ── 一般用戶：Email 登入 ─────────────────────────────────────────
   const emailLogin = async (email, password) => {
     const res = await axios.post(`${BACKEND_URL}/auth/user/login`, { email, password });
     await _handleToken(res.data.token);
     Swal.fire({ title: "登入成功", icon: "success", timer: 2000, timerProgressBar: true });
   };
 
-  // ── 一般用戶：Email 註冊 ─────────────────────────────────────────
   const emailRegister = async (name, email, password) => {
     const res = await axios.post(`${BACKEND_URL}/auth/user/register`, { name, email, password });
     await _handleToken(res.data.token);

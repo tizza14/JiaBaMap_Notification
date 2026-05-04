@@ -15,7 +15,7 @@ const navigation = [
   { name: "訂單管理", link: "/" },
 ];
 
-const logout = () => localStorage.removeItem("storeToken");
+const logout = () => sessionStorage.removeItem("storeToken");
 
 const username = ref("");
 const password = ref("");
@@ -87,11 +87,12 @@ async function handleSubmit() {
     contactPhone: contactPhone.value.trim(),
     placeId: placeId.value,
   };
+
   const registerSchema = z.object({
     username: z.string().min(5, "帳號至少需要5個字元"),
     password: z.string().min(8, "密碼至少需要8個字元"),
     storeName: z.string().min(1, "店名至少需要1個字元"),
-    placeId: z.string().min(1, "地址需自選單中選取"),
+    placeId: z.string().optional(),
     storePhone: z.string().regex(/^0\d{1,9}$/, "請輸入正確電話格式"),
     storeIntro: z.string().max(50, "店家簡介最多50字元"),
     storeTaxId: z.string().regex(/\d{8}/, "請輸入正確統一編號格式"),
@@ -103,18 +104,21 @@ async function handleSubmit() {
   try {
     registerSchema.parse(form);
 
-    await axios.post(`${import.meta.env.VITE_BACKEND_BASE_URL}/store/`, {
+    const { data } = await axios.post(
+      `${import.meta.env.VITE_BACKEND_BASE_URL}/auth/store/register`,
       form,
-    });
+    );
 
-    Swal.fire({
-      title: "Success",
-      text: "註冊成功",
+    sessionStorage.setItem("storeToken", data.token);
+
+    await Swal.fire({
+      title: "註冊成功",
+      text: "歡迎加入 JiaBaMap！",
       icon: "success",
       confirmButtonText: "OK",
     });
 
-    router.push({ name: "storesignin" });
+    router.push({ name: "dashboard" });
   } catch (err) {
     if (err instanceof z.ZodError) {
       Swal.fire({
@@ -126,11 +130,10 @@ async function handleSubmit() {
     } else {
       Swal.fire({
         title: "Error",
-        text: "請再試一次",
+        text: err.response?.data?.message || "請再試一次",
         icon: "error",
         confirmButtonText: "OK",
       });
-      console.log(err);
     }
   }
 }
@@ -202,8 +205,8 @@ onMounted(initGoogleAutocomplete);
             class="block mb-2 text-sm font-bold text-gray-700"
             for="storeAddress"
             >✨ 店家地址:
-            <span class="text-xs font-normal text-red-600"
-              >*地址輸入後需自選單中選取</span
+            <span class="text-xs font-normal text-gray-400"
+              >（輸入後可從選單選取以綁定 Google 地點）</span
             ></label
           >
           <div class="relative w-full border rounded hover:shadow-md">

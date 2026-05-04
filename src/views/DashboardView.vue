@@ -3,9 +3,10 @@ import { ref, onMounted } from "vue";
 import * as jose from "jose";
 import axios from "axios";
 import { useRouter } from "vue-router";
+import StoreSidebar from "@/components/StoreSidebar.vue";
 
 const router = useRouter();
-const token = localStorage.getItem("storeToken");
+const token = sessionStorage.getItem("storeToken");
 const storeId = token ? jose.decodeJwt(token).id : null;
 
 const navigation = ref([
@@ -78,7 +79,7 @@ const loadDashboard = async () => {
 };
 
 const logout = () => {
-  localStorage.removeItem("storeToken");
+  sessionStorage.removeItem("storeToken");
   router.push({ name: "storesignin" });
 };
 
@@ -87,33 +88,7 @@ onMounted(loadDashboard);
 
 <template>
   <div class="flex h-screen bg-gray-100">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-white shadow-md flex flex-col">
-      <div class="p-6 text-lg font-semibold text-center text-gray-800 border-b">
-        餐廳後台
-      </div>
-      <nav class="flex-1 py-4">
-        <ul>
-          <li v-for="item in navigation" :key="item.name">
-            <router-link
-              :to="item.link"
-              class="block px-6 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition"
-              active-class="bg-amber-50 text-amber-600 border-r-4 border-amber-400"
-            >
-              {{ item.name }}
-            </router-link>
-          </li>
-        </ul>
-      </nav>
-      <div class="p-4 border-t">
-        <button
-          class="w-full px-4 py-2 text-sm font-medium text-gray-700 rounded hover:bg-red-50 hover:text-red-600 transition"
-          @click="logout"
-        >
-          登出
-        </button>
-      </div>
-    </aside>
+    <StoreSidebar />
 
     <!-- Main Content -->
     <main class="flex-1 p-6 overflow-y-auto">

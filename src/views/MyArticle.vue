@@ -119,7 +119,18 @@ const deleteArticle = async (articleId = null) => {
           await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/articles/${articleId}`);
         } catch { /* 可能是 local-only 草稿 */ }
       }
-      localStorage.removeItem("formData");
+      // 只有當 localStorage 草稿對應到這筆才一起清除
+      const localRaw = localStorage.getItem("formData");
+      if (localRaw) {
+        try {
+          const parsed = JSON.parse(localRaw);
+          if (!articleId || articleId === "local" || parsed.draftId === articleId) {
+            localStorage.removeItem("formData");
+          }
+        } catch {
+          localStorage.removeItem("formData");
+        }
+      }
       await loadDrafts();
     }
 

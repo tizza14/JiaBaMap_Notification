@@ -53,7 +53,7 @@ const getNotificationTarget = (notification) => {
 
   if (relatedType === 'order') {
     const orderId = notification.relatedId
-    return localStorage.getItem('storeToken')
+    return sessionStorage.getItem('storeToken')
       ? { name: 'OrderManagement', query: { orderId } }
       : { name: 'CheckoutDetail', query: { orderId } }
   }
@@ -84,7 +84,7 @@ watch(() => auth.userData, (user) => {
     notifStore.fetchNotifications(userId)
   } else {
     // 檢查是否為店家登入
-    const storeToken = localStorage.getItem('storeToken')
+    const storeToken = sessionStorage.getItem('storeToken')
     if (storeToken) {
       try {
         const decoded = jose.decodeJwt(storeToken)

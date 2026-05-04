@@ -19,18 +19,18 @@ const isMenuOpen = ref(false);
 const menuContainer = ref(null);
 const isSearchOpen = ref(false);
 const showLoginModal = ref(false);
-const isStoreLoggedIn = ref(!!localStorage.getItem("storeToken"));
+const isStoreLoggedIn = ref(!!sessionStorage.getItem("storeToken"));
 
 // 登出店家
 const logoutStore = () => {
-  localStorage.removeItem("storeToken");
+  sessionStorage.removeItem("storeToken");
   isStoreLoggedIn.value = false;
   window.location.href = "/";
 };
 
-// 監聽 localStorage 變化 (處理其他頁面登入/登出的情況)
+// 監聽 sessionStorage 變化 (處理其他頁面登入/登出的情況)
 const checkStoreStatus = () => {
-  isStoreLoggedIn.value = !!localStorage.getItem("storeToken");
+  isStoreLoggedIn.value = !!sessionStorage.getItem("storeToken");
 };
 
 // 新增：判斷是否為首頁

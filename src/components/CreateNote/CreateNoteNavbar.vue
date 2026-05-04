@@ -133,7 +133,7 @@ const submitArticle = async () => {
     subData.append("eatdate", formData.date);
     subData.append("userPhoto", auth.userData.profilePicture || "");
 
-    const base64Data = formData.fileList?.[0].data;
+    const base64Data = formData.fileList?.[0]?.data;
     // 如果 Base64 資料存在，將其轉為 File
     if (base64Data) {
       // 提取 Base64 的資料部分
@@ -157,44 +157,37 @@ const submitArticle = async () => {
       subData.append("photo", file);
     }
 
-    // 使用 Promise.all 確保所有操作都完成
-    await Promise.all([
-      // 發送 API 請求
-      (async () => {
-        const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_BASE_URL}/articles`,
-          subData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-              Authorization: `Bearer ${auth.token}`,
-            },
-          },
-        );
-
-        if (response.status === 200) {
-          // 清除 localStorage
-          localStorage.removeItem("formData");
-          localStorage.removeItem("noteData");
-          localStorage.removeItem("storeData");
-          localStorage.removeItem("editingDraft");
-          localStorage.removeItem("previewNoteData");
-        }
-        return response;
-      })(),
-
-      swalWithBootstrapButtons.fire({
-        title: "成功！",
-        text: "食記發表成功",
-        icon: "success",
-        confirmButtonText: "確定",
-        allowOutsideClick: false,
-        didClose: () => {
-          // SweetAlert 關閉後執行路由跳轉
-          router.push("/articlelist");
+    // 發送 API 請求
+    const response = await axios.post(
+      `${import.meta.env.VITE_BACKEND_BASE_URL}/articles`,
+      subData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${auth.token}`,
         },
-      }),
-    ]);
+      },
+    );
+
+    if (response.status === 200) {
+      // 清除 localStorage
+      localStorage.removeItem("formData");
+      localStorage.removeItem("noteData");
+      localStorage.removeItem("storeData");
+      localStorage.removeItem("editingDraft");
+      localStorage.removeItem("previewNoteData");
+    }
+
+    await swalWithBootstrapButtons.fire({
+      title: "成功！",
+      text: "食記發表成功",
+      icon: "success",
+      confirmButtonText: "確定",
+      allowOutsideClick: false,
+      didClose: () => {
+        router.push("/articlelist");
+      },
+    });
   } catch (error) {
     // 確保錯誤提示會顯示
     await swalWithBootstrapButtons.fire({
