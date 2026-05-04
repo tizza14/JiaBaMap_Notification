@@ -11,6 +11,7 @@ export const useKeywordStore = defineStore("keyword", () => {
   const isOrderable = ref(false);
   const result = ref([]);
   const selectedCost = ref("default");
+  const isStaleData = ref(false);
   const Swal = inject("$swal");
 
   const sortOptions = {
@@ -162,14 +163,9 @@ export const useKeywordStore = defineStore("keyword", () => {
   // 標籤搜尋方法
   const navigateToSearch = (router, tag) => {
     keyword.value = tag;
-    router
-      .push({
-        path: "/search",
-        query: { keyword: tag },
-      })
-      .then(() => {
-        handleSearch();
-      });
+    router.push({ path: "/search" }).then(() => {
+      handleSearch();
+    });
   };
 
   const setKeyword = (value) => {
@@ -211,12 +207,12 @@ export const useKeywordStore = defineStore("keyword", () => {
       });
       if (response.status === 200) {
         result.value = response.data;
+        isStaleData.value = response.headers["x-cache-status"] === "STALE";
       }
     } catch (error) {
       console.error("Search error:", error);
-      if (error.response) {
-        result.value = [];
-      }
+      result.value = [];
+      isStaleData.value = false;
     }
   };
 
@@ -281,6 +277,7 @@ export const useKeywordStore = defineStore("keyword", () => {
     isOrderable,
     result,
     selectedCost,
+    isStaleData,
     sortOptions,
     costOptions,
     districts,

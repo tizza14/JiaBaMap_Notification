@@ -100,6 +100,11 @@
       </div>
     </div>
 
+    <div v-if="Search.isStaleData" class="mx-3 mb-2 px-3 py-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md flex items-center gap-1.5">
+      <font-awesome-icon :icon="['fas', 'clock-rotate-left']" class="text-amber-400" />
+      顯示快取資料，可能非最新
+    </div>
+
     <div v-if="Search.filteredResult[0]">
       <div
         v-for="place in Search.filteredResult"

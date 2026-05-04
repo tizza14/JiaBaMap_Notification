@@ -92,6 +92,7 @@ const loadStorePage = async () => {
     await restaurantStore.fetchBannerPhoto();
     await restaurantStore.fetchSimilarRestaurants();
     await restaurantStore.fetchRecommendedRestaurants();
+    restaurantStore.fetchSearchTopics();
     checkFavorite();
   } catch (error) {
     console.error("數據載入錯誤：", error);
@@ -412,7 +413,7 @@ document.addEventListener("click", handleDocumentClick);
       <!-- 地圖區域 -->
       <div class="mt-10 text-gray-700">
         <h3 class="mb-2 text-2xl font-bold">
-          和牛涮 日式鍋物放題 台南中華西店 的食記
+          {{ storeName }} 的食記
         </h3>
       </div>
       <!-- 熱門餐廳分類 -->

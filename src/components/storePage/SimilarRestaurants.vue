@@ -1,11 +1,18 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { useStore } from "@/stores/storePage";
+import { useRouter } from "vue-router";
 import { Carousel, Slide, Navigation } from "vue3-carousel";
 import "vue3-carousel/dist/carousel.css";
 
 const restaurantStore = useStore();
 const { storeName, similarRestaurants } = storeToRefs(restaurantStore);
+const router = useRouter();
+
+const goToStore = (placeId) => {
+  restaurantStore.placesId = placeId;
+  router.push({ path: "/store", query: { id: placeId } });
+};
 </script>
 
 <template>
@@ -40,9 +47,8 @@ const { storeName, similarRestaurants } = storeToRefs(restaurantStore);
             class="flex-shrink-0 px-1"
           >
             <div class="bg-white rounded-lg shadow-md mb-4 max-w-[250px]">
-              <a
-                :href="restaurant.googleMapsUri"
-                target="_blank"
+              <div
+                @click="goToStore(restaurant.place_id)"
                 class="block cursor-pointer"
               >
                 <div class="overflow-hidden">
@@ -92,7 +98,7 @@ const { storeName, similarRestaurants } = storeToRefs(restaurantStore);
                     </p>
                   </div>
                 </div>
-              </a>
+              </div>
             </div>
           </Slide>
 
@@ -146,7 +152,7 @@ const { storeName, similarRestaurants } = storeToRefs(restaurantStore);
       </div>
 
       <!-- 如果沒有數據顯示加載狀態 -->
-      <div v-else class="py-4 text-center">正在加載餐廳資料...</div>
+      <div v-else class="py-4 text-center text-gray-400">附近沒有更多餐廳資料</div>
     </div>
   </div>
 </template>

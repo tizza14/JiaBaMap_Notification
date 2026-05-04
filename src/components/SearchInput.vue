@@ -1,6 +1,6 @@
 <script setup>
 import { useKeywordStore } from "@/stores/keywordStore.js";
-import { computed, watch, inject } from "vue";
+import { computed, inject } from "vue";
 import { useRouter, useRoute } from "vue-router";
 
 const router = useRouter();
@@ -22,7 +22,9 @@ const districts = computed(() => Search.districts);
 
 const handleEnterKey = () => {
   if (keyword.value) {
-    Search.navigateToSearch(router, keyword.value);
+    router
+      .push({ path: "/search", query: { keyword: keyword.value } })
+      .then(() => Search.handleSearch());
   } else {
     Swal.fire({
       title: "請輸入有效關鍵字！",
@@ -45,15 +47,6 @@ const multiCities = computed(() => {
   );
 });
 
-watch(
-  () => route.query.keyword,
-  (newKeyword) => {
-    if (newKeyword !== undefined && newKeyword !== Search.keyword) {
-      Search.setKeyword(newKeyword || "");
-      handleEnterKey();
-    }
-  },
-);
 </script>
 
 <template>
