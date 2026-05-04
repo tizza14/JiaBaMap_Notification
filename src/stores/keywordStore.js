@@ -193,7 +193,7 @@ export const useKeywordStore = defineStore("keyword", () => {
 
   const handleSearch = async () => {
     if (!keyword.value || keyword.value === "") {
-      alert("請輸入有效關鍵字!!!");
+      Swal.fire({ text: "請輸入有效關鍵字！", icon: "warning" });
       return;
     }
     try {

@@ -222,7 +222,13 @@ export const useStore = defineStore("store", () => {
   };
 
   const loadFromLocalStorage = () => {
-    const data = JSON.parse(localStorage.getItem("storeData"));
+    let data;
+    try {
+      data = JSON.parse(localStorage.getItem("storeData"));
+    } catch {
+      localStorage.removeItem("storeData");
+      return;
+    }
     if (data) {
       storeName.value = data.storeName || "";
       rating.value = data.rating || "";

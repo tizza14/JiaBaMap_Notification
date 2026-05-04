@@ -31,7 +31,7 @@ export const useNotificationStore = defineStore('notification', () => {
         headers: authHeader(type)
       })
       notifications.value = data
-        .sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, MAX_NOTIFICATIONS)
       unreadCount.value = notifications.value.filter(n => !n.read).length
     } catch (e) {
@@ -146,8 +146,14 @@ export const useNotificationStore = defineStore('notification', () => {
     unreadCount.value = 0
   }
 
-  function sendBrowserNotification(notification) {
-    if ('Notification' in window && window.Notification.permission === 'granted') {
+  async function sendBrowserNotification(notification) {
+    if (!('Notification' in window)) return
+
+    if (window.Notification.permission === 'default') {
+      await window.Notification.requestPermission()
+    }
+
+    if (window.Notification.permission === 'granted') {
       const message = getNotificationMessage(
         notification.actionType,
         notification.metadata,

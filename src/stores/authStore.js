@@ -83,8 +83,12 @@ export const useAuth = defineStore("auth", () => {
   };
 
   const getUserdata = async () => {
-    const response = await axios.get(`${BACKEND_URL}/user/${userId.value}`);
-    userData.value = response.data;
+    try {
+      const response = await axios.get(`${BACKEND_URL}/user/${userId.value}`);
+      userData.value = response.data;
+    } catch (err) {
+      console.error("Failed to fetch user data:", err);
+    }
   };
 
   const emailLogin = async (email, password) => {
@@ -102,6 +106,7 @@ export const useAuth = defineStore("auth", () => {
   const logout = () => {
     useNotificationStore().disconnectSocket();
     userData.value = null;
+    userId.value = "";
     localStorage.removeItem("userData");
     localStorage.removeItem("userToken");
     router.push({ name: "home" });

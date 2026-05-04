@@ -18,7 +18,7 @@ export const useCommentStore = defineStore("commentStore", () => {
     );
     comments.value = response.data;
 
-    const userRes = await Promise.all(
+    const userRes = await Promise.allSettled(
       comments.value.map((comment) =>
         axios.get(
           `${import.meta.env.VITE_BACKEND_BASE_URL}/user/${comment.userId}`,
@@ -26,11 +26,12 @@ export const useCommentStore = defineStore("commentStore", () => {
       ),
     );
     comments.value = comments.value.map((comment, index) => {
-      const user = userRes[index].data; // 假設 userRes 每個元素是完整的用戶數據
+      const result = userRes[index];
+      const user = result.status === "fulfilled" ? result.value.data : {};
       return {
-        ...comment, // 保留原有的 comment 屬性
-        name: user.name, // 添加用戶的名稱
-        avatar: user.profilePicture, // 添加用戶的頭像
+        ...comment,
+        name: user.name || "匿名",
+        avatar: user.profilePicture || null,
       };
     });
   };
