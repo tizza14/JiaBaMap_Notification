@@ -187,6 +187,12 @@ onMounted(async () => {
     fileList.value = [];
   }
 
+  // 初始化 currentDraftId（讓 saveNote 能正確帶 draftId 進 localStorage）
+  const draftIdFromRoute = route.query.draftId;
+  if (draftIdFromRoute && draftIdFromRoute !== "local") {
+    currentDraftId.value = draftIdFromRoute;
+  }
+
   // 啟動自動儲存（每 30 秒），編輯已發布文章時不啟動
   if (route.query.type !== "published") {
     autoSaveTimer = setInterval(autoSaveDraft, 30000);
@@ -435,6 +441,7 @@ const saveNote = async () => {
     title: title.value,
     content: content.value,
     fileList: fileList.value,
+    draftId: currentDraftId.value || undefined,
   };
 
   localStorage.setItem("formData", JSON.stringify(formData));
