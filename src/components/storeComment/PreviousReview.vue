@@ -10,7 +10,6 @@ const user = useAuth();
 // 從 Store 獲取評論數據
 const commentStore = useCommentStore();
 const comments = computed(() => commentStore.comments);
-const getComment = commentStore.getComment();
 const userData = computed(() => user.userData);
 const Swal = inject("$swal");
 // 圖片popup

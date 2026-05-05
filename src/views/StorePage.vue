@@ -12,8 +12,10 @@ import SimilarRestaurants from "@/components/storePage/SimilarRestaurants.vue";
 import RecommendedRestaurants from "@/components/storePage/RecommendedRestaurants.vue";
 import SearchInput from "@/components/SearchInput.vue";
 import { useAuth } from "@/stores/authStore";
+import { useCommentStore } from "@/stores/commentStore";
 
 const restaurantStore = useStore();
+const commentStore = useCommentStore();
 const route = useRoute();
 const user = useAuth();
 const userData = computed(() => user.userData);
@@ -106,6 +108,7 @@ const loadStorePage = async () => {
     await restaurantStore.fetchRecommendedRestaurants();
     restaurantStore.fetchSearchTopics();
     await restaurantStore.fetchMenu();
+    commentStore.getComment();
     checkFavorite();
     document.title = restaurantStore.storeName
       ? `${restaurantStore.storeName} | 呷飽地圖`
