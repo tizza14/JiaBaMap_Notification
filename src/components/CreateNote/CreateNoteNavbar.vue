@@ -176,6 +176,9 @@ const submitArticle = async () => {
       localStorage.removeItem("storeData");
       localStorage.removeItem("editingDraft");
       localStorage.removeItem("previewNoteData");
+      // 清除本地草稿 key（MyArticle.vue 以 draft_${draftId} 暫存的本地草稿）
+      const draftId = route.query.draftId;
+      if (draftId) localStorage.removeItem(`draft_${draftId}`);
     }
 
     await swalWithBootstrapButtons.fire({

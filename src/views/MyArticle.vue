@@ -132,6 +132,10 @@ const deleteArticle = async (articleId = null) => {
           localStorage.removeItem("formData");
         }
       }
+      // 清除 MyArticle.vue 編輯本地草稿時暫存的 draft_* key
+      if (articleId && articleId !== "local") {
+        localStorage.removeItem(`draft_${articleId}`);
+      }
       await loadDrafts();
     }
 

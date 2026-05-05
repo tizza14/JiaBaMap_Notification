@@ -130,12 +130,23 @@ onMounted(async () => {
       // 檢查是否有一般的表單數據
       const storedData = localStorage.getItem("formData");
 
+      // 從 MyArticle.vue 傳入的本地草稿 key（用完即清）
+      const draftId = route.query.draftId;
+      const localDraftRaw = draftId ? localStorage.getItem(`draft_${draftId}`) : null;
+      if (localDraftRaw) {
+        localStorage.removeItem(`draft_${draftId}`);
+      }
+
       let formData;
       // 優先使用預覽數據
       if (previewData) {
         formData = JSON.parse(previewData);
       }
-      // 其次使用表單數據
+      // 其次使用本地草稿 key（MyArticle 傳入）
+      else if (localDraftRaw) {
+        formData = JSON.parse(localDraftRaw);
+      }
+      // 再使用一般表單數據
       else if (storedData) {
         formData = JSON.parse(storedData);
       }
