@@ -26,6 +26,11 @@ const isMobile = ref(window.innerWidth < 768);
 const highlightedTargetId = ref("");
 
 const api = axios.create({ baseURL: import.meta.env.VITE_BACKEND_BASE_URL });
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("userToken");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
 const formatDate = (date) => dayjs(date).format("YYYY-MM-DD HH:mm");
 
