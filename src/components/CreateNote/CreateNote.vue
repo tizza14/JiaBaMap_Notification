@@ -137,6 +137,13 @@ onMounted(async () => {
         localStorage.removeItem(`draft_${draftId}`);
       }
 
+      // 判斷 localStorage 的 formData 是否對應這份草稿
+      let storedParsed = null;
+      if (storedData) {
+        try { storedParsed = JSON.parse(storedData); } catch { /* ignore */ }
+      }
+      const localMatchesDraft = draftId && storedParsed?.draftId === draftId;
+
       let formData;
       // 優先使用預覽數據
       if (previewData) {
@@ -146,9 +153,29 @@ onMounted(async () => {
       else if (localDraftRaw) {
         formData = JSON.parse(localDraftRaw);
       }
-      // 再使用一般表單數據
-      else if (storedData) {
-        formData = JSON.parse(storedData);
+      // 再使用 localStorage（draftId 對得上才用，避免帶入其他草稿的資料）
+      else if (localMatchesDraft) {
+        formData = storedParsed;
+      }
+      // DB 草稿：localStorage 沒有對應資料，從後端拉
+      else if (draftId && draftId !== "local") {
+        try {
+          const { data } = await axios.get(
+            `${import.meta.env.VITE_BACKEND_BASE_URL}/articles/${draftId}`,
+          );
+          formData = {
+            title: data.title,
+            content: data.content,
+            restaurantName: data.restaurantName,
+            placeId: data.placeId,
+            date: data.eatdateAt ? new Date(data.eatdateAt).toISOString().split("T")[0] : defaultFormData.date,
+            fileList: [],
+          };
+          placeId.value = data.placeId || "";
+          photo.value = data.photo || "";
+        } catch {
+          formData = defaultFormData;
+        }
       }
       // 最後使用預設值
       else {
