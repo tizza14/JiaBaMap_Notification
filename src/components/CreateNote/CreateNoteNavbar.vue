@@ -164,7 +164,7 @@ const submitArticle = async () => {
       {
         headers: {
           "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${auth.token}`,
+          Authorization: `Bearer ${localStorage.getItem("userToken")}`,
         },
       },
     );
