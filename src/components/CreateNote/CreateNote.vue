@@ -477,6 +477,7 @@ const saveArticle = async () => {
       await axios.patch(
         `${import.meta.env.VITE_BACKEND_BASE_URL}/articles/${route.query.id}`,
         updateData,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` } },
       );
 
       // 顯示成功訊息
@@ -541,7 +542,8 @@ const autoSaveDraft = async () => {
         restaurantName: restaurantName.value,
         placeId: placeId.value,
         eatdate: date.value,
-      }
+      },
+      { headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` } },
     );
     currentDraftId.value = data.draftId;
     autoSaveStatus.value = "saved";

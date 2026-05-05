@@ -37,6 +37,7 @@ const getOrderDetails = async (orderId) => {
   try {
     const res = await axios.get(
       `${VITE_BACKEND_BASE_URL}/order/detail/${orderId}`,
+      { headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` } },
     );
     orderDetail.value = res.data;
     shoppingCart.packages.products = orderDetail.value.items.map((item) => ({
@@ -63,7 +64,7 @@ const savePickupInfo = async () => {
     pickupName: pickupName.value || "",
     pickupPhone: pickupPhone.value || "",
     pickupTime: formattedDateTime.value || undefined,
-  });
+  }, { headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` } });
 };
 
 const handelPayment = async (shoppingCart) => {

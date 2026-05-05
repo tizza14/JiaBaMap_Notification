@@ -12,7 +12,9 @@ const VITE_BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
 const getOrderDetails = async (id) => {
   try {
-    const res = await axios.get(`${VITE_BACKEND_BASE_URL}/order/detail/${id}`);
+    const res = await axios.get(`${VITE_BACKEND_BASE_URL}/order/detail/${id}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` },
+    });
     orderDetail.value = res.data;
   } catch (error) {
     console.error("取得訂單資料錯誤:", error);

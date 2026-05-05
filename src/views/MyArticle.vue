@@ -110,14 +110,15 @@ const deleteArticle = async (articleId = null) => {
   if (!result.isConfirmed) return;
 
   try {
+    const authHeaders = { headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` } };
     if (route.query.status === "published") {
-      await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/articles/${articleId}`);
+      await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/articles/${articleId}`, authHeaders);
       await loadPublishedArticles();
     } else {
       // 刪除草稿：DB + localStorage
       if (articleId && articleId !== "local") {
         try {
-          await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/articles/${articleId}`);
+          await axios.delete(`${import.meta.env.VITE_BACKEND_BASE_URL}/articles/${articleId}`, authHeaders);
         } catch { /* 可能是 local-only 草稿 */ }
       }
       // 只有當 localStorage 草稿對應到這筆才一起清除
