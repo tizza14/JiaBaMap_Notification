@@ -29,7 +29,8 @@ const loadDrafts = async () => {
   if (auth.userData?._id) {
     try {
       const { data } = await axios.get(
-        `${import.meta.env.VITE_BACKEND_BASE_URL}/articles/drafts/${auth.userData._id}`
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/articles/drafts/${auth.userData._id}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` } }
       );
       data.forEach((d) => allDrafts.push({ ...d, source: "db" }));
     } catch {
